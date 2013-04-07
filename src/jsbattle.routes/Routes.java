@@ -2,7 +2,7 @@ package jsbattle.routes;
 
 import jsbattle.controllers.Fights;
 import jsbattle.controllers.Players;
-import jsbattle.controllers.Rounds;
+
 import jsbattle.core.CRUDRoutes;
 import org.vertx.java.core.Handler;
 import org.vertx.java.core.http.HttpServerRequest;
@@ -18,7 +18,6 @@ public class Routes {
 
         new CRUDRoutes("players", new Players(),routeMatcher);
 
-        new CRUDRoutes("rounds", new Rounds(),routeMatcher);
 
         // Catch all - serve the index page
         routeMatcher.getWithRegEx(".*", new Handler<HttpServerRequest>() {
