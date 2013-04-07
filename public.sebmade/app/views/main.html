@@ -1,0 +1,20 @@
+<div class="page-header">
+    <h1>Le combat le plus attendu de l'histoire du web</h1>
+    <p>Il ne doit en rester qu'un</p>
+</div>
+<p class="lead">Les Joueurs</p>
+<div class="row">
+    <div class="span4" ng-repeat="p in players">
+        <div class="well">
+            <h4>{{p.firstName}} {{p.lastName}}</h4>
+            <p>{{p.twitter}} - {{p.framework}}</p>
+            <label class="checkbox" for="checkbox">
+                <input type="checkbox" value="true" id="checkbox" name="checkbox" ng-model="p.ready">
+                <span>prêt au combat</span>
+            </label>
+            <button ng-click="removePlayer(p)">déclare forfait</button>
+        </div>
+    </div>
+</div>
+<a class="btn" href="#addPlayer">Ajouter un joueur</a>
+<a class="btn" ng-click="createFight()" ng-show="readyToFight()">Envoyer sur le ring</a>

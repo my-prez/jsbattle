@@ -98,7 +98,7 @@ public class Controller implements CRUDController {
         LinkedList<Model> models =  Redis.getAll(_model.getClass());
 
         if(models==null) {
-            req.response.end("{}");
+            req.response.end("[]");
         } else {
             req.response.end(Json.stringify(Json.toJson(models)));
         }
@@ -111,7 +111,7 @@ public class Controller implements CRUDController {
         LinkedList<Model> models =  Redis.getAll(_model.getClass(),req.params().get("query"));
 
         if(models==null) {
-            req.response.end("{}");
+            req.response.end("[]");
         } else {
             req.response.end(Json.stringify(Json.toJson(models)));
         }
