@@ -16,6 +16,80 @@
 
     });
 
+    //mettre les défauts
+    window.Fight = Backbone.Model.extend({
+        urlRoot:"/fights" ,
+
+        setRounds : function(rounds) {
+            //var currentFight = this;
+            this.set({rounds:rounds.toJSON()})
+
+            rounds.on("change", function(){ this.setRounds(rounds); console.log("****");}, this)
+
+        }
+    });
+
+    window.Round = Backbone.Model.extend({
+        urlRoot:"/rounds",
+        //http://backbonejs.org/#FAQ-this
+        setFirstOpponent:function(opponent){
+            //var currentRound = this;
+            this.set({opponentOne:opponent.toJSON()})
+            opponent.on("change", function(){ this.setFirstOpponent(opponent)}, this)
+        },
+
+        setSecondOpponent:function(opponent){
+            //var currentRound = this;
+            this.set({opponentTwo:opponent.toJSON()})
+            opponent.on("change", function(){ this.setSecondOpponent(opponent)}, this)
+        }
+    });
+
+    window.Players = Backbone.Collection.extend({
+        url :"/players",
+        model : Player
+    });
+
+    window.Fights = Backbone.Collection.extend({
+        url :"/fights",
+        model : Fight
+    });
+
+    window.Rounds = Backbone.Collection.extend({
+        url :"/rounds",
+        model : Round
+    });
+
+    var k33g = new Player({firstName:"Philippe", lastName:"Charrière", framework:"Backbone"});
+    var sebmade = new Player({firstName:"Sébastien", lastName:"Letélié", framework:"Angular"});
+    var tchak13 = new Player({firstName:"Paul", lastName:"Chavar", framework:"Ember"});
+    //defaults ???
+
+    var r1 = new Round({
+        number:1,
+        opponentOneScore:0,
+        opponentTwoScore:0
+    });
+
+    var r2 = new Round({
+        number:1,
+        opponentOneScore:0,
+        opponentTwoScore:0
+    });
+
+    var rounds = new Rounds([r1,r2])
+
+    var fightOne = new Fight({name:"FIGHTONE"});
+
+    r1.setFirstOpponent(sebmade)
+    r1.setSecondOpponent(k33g)
+    r2.setFirstOpponent(k33g)
+    r2.setSecondOpponent(sebmade)
+
+    fightOne.setRounds(rounds)
+
+
+
 </script>
 
 </body>
