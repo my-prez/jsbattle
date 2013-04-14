@@ -45,7 +45,7 @@ Par exemple :
 
 ###Lancer la bête
 
-    redis maconf.conf
+    redis-server maconf.conf
 
 puis
 
