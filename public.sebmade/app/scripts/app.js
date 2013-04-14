@@ -11,6 +11,10 @@ angular.module('public.sebmadeApp', [])
                 templateUrl: 'views/addPlayer.html',
                 //controller: 'MainCtrl'
             })
+            .when('/fight', {
+                templateUrl: 'views/fight.html',
+                //controller: 'MainCtrl'
+            })
             .otherwise({
                 redirectTo: '/'
             });

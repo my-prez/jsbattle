@@ -1,5 +1,6 @@
 <div class="page-header">
     <h1>Le combat le plus attendu de l'histoire du web</h1>
+
     <p>Il ne doit en rester qu'un</p>
 </div>
 <p class="lead">Les Joueurs</p>
@@ -7,6 +8,7 @@
     <div class="span4" ng-repeat="p in players">
         <div class="well">
             <h4>{{p.firstName}} {{p.lastName}}</h4>
+
             <p>{{p.twitter}} - {{p.framework}}</p>
             <label class="checkbox" for="checkbox">
                 <input type="checkbox" value="true" id="checkbox" name="checkbox" ng-model="p.ready">
@@ -16,5 +18,31 @@
         </div>
     </div>
 </div>
-<a class="btn" href="#addPlayer">Ajouter un joueur</a>
+<a class="btn" href="#/addPlayer">Ajouter un joueur</a>
 <a class="btn" ng-click="createFight()" ng-show="readyToFight()">Envoyer sur le ring</a>
+<br><br>
+<div ng-repeat="fight in fights">
+    <div class="row">
+        <div class="span5">
+            <player-score increment-score="incrementScore(fight, 'opponentOneScore')"
+                          decrement-score="decrementScore(fight, 'opponentOneScore')"
+                          fight="fight"
+                          opponent="opponentOne"
+                          opponent-score="opponentOneScore"></player-score>
+        </div>
+        <div class="span2 centered">
+            <br>
+            <br>
+            <h4>VS</h4>
+        </div>
+        <div class="span5">
+            <player-score increment-score="incrementScore(fight, 'opponentTwoScore')"
+                          decrement-score="decrementScore(fight, 'opponentTwoScore')"
+                          fight="fight"
+                          opponent="opponentTwo"
+                          opponent-score="opponentTwoScore"></player-score>
+        </div>
+    </div>
+    <a class="btn" ng-click="removeFight(fight)">Annuler le combat</a>
+    <br><br>
+</div>

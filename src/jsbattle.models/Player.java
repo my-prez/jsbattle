@@ -3,8 +3,10 @@ package jsbattle.models;
 
 import jsbattle.core.Extended;
 import jsbattle.core.Model;
+import org.codehaus.jackson.annotate.JsonIgnoreProperties;
 
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Player extends Extended implements Model {
 
     private String firstName;

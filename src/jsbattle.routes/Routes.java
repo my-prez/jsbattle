@@ -14,9 +14,9 @@ public class Routes {
 
     public static void define(final String  staticDirectory, final String defaultPage) {
 
-        new CRUDRoutes("fights", new Fights(),routeMatcher);
+        new CRUDRoutes("fights", new Fights(), routeMatcher);
 
-        new CRUDRoutes("players", new Players(),routeMatcher);
+        new CRUDRoutes("players", new Players(), routeMatcher);
 
 
         // Catch all - serve the index page

@@ -18,3 +18,16 @@
         margin-bottom: 60px;
     }
 }
+
+.centered {
+    text-align: center;
+    vertical-align: middle;
+}
+.font24 {
+    font-size: 24pt;
+}
+.score {
+    font-size: 36pt;
+    font-weight: bold;
+    vertical-align: middle;
+}
