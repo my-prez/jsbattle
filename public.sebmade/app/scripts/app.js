@@ -5,15 +5,11 @@ angular.module('public.sebmadeApp', [])
         $routeProvider
             .when('/', {
                 templateUrl: 'views/main.html',
-                //controller: 'MainCtrl'
+                controller: 'MainCtrl'
             })
-            .when('/addPlayer', {
-                templateUrl: 'views/addPlayer.html',
-                //controller: 'MainCtrl'
-            })
-            .when('/fight', {
-                templateUrl: 'views/fight.html',
-                //controller: 'MainCtrl'
+            .when('/player/:id', {
+                templateUrl: 'views/player.html',
+                controller: 'PlayerCtrl'
             })
             .otherwise({
                 redirectTo: '/'

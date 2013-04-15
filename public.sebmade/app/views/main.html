@@ -7,18 +7,26 @@
 <div class="row">
     <div class="span4" ng-repeat="p in players">
         <div class="well">
-            <h4>{{p.firstName}} {{p.lastName}}</h4>
+            <div class="media">
+                <a class="pull-left" href="#" ng-show="p.twitter">
+                    <img class="media-object img-circle" src="/pictures/avatars/{{p.twitter}}.jpg" width="64" height="64">
+                </a>
+                <div class="media-body">
+                    <h4><a href="#/player/{{p.id}}">{{p.firstName}} {{p.lastName}}</a></h4>
 
-            <p>{{p.twitter}} - {{p.framework}}</p>
-            <label class="checkbox" for="checkbox">
-                <input type="checkbox" value="true" id="checkbox" name="checkbox" ng-model="p.ready">
-                <span>prêt au combat</span>
-            </label>
-            <button ng-click="removePlayer(p)">déclare forfait</button>
+                    <p><a href="http://twitter.com/{{p.twitter}}" target="_blank">@{{p.twitter}}</a> - {{p.framework}}
+                    </p>
+                    <label class="checkbox" for="checkbox">
+                        <input type="checkbox" value="true" id="checkbox" name="checkbox" ng-model="p.ready">
+                        <span>prêt au combat</span>
+                    </label>
+                    <button ng-click="removePlayer(p)">déclare forfait</button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
-<a class="btn" href="#/addPlayer">Ajouter un joueur</a>
+<a class="btn" href="#/player/">Ajouter un joueur</a>
 <a class="btn" ng-click="createFight()" ng-show="readyToFight()">Envoyer sur le ring</a>
 <br><br>
 <div ng-repeat="fight in fights">
