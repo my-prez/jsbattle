@@ -48,7 +48,7 @@ window.App = {
 
 
 
-        window.players = new this.Collections.Players([k33g, sebmade, tchak13]);
+        window.players = new this.Collections.Players([ sebmade, tchak13, k33g]);
 
         window.playersView = new this.Views.Players({collection:players})
 
