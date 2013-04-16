@@ -16,6 +16,16 @@ public class Player extends Extended implements Model {
     private String twitter;
     private String framework;
 
+    private Boolean ready;
+
+    public Boolean getReady() {
+        return ready;
+    }
+
+    public void setReady(Boolean ready) {
+        this.ready = ready;
+    }
+
     public String getPicture() {
         return picture;
     }
