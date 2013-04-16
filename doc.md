@@ -8,6 +8,8 @@ Lancer Redis en mode par défaut :`redis-server`
         redisPort = 6379
         staticAssets = "public";
         defaultPage = "index.html";
+        
+        //httpost ?
 
 
 ##Mode "stand-alone"

@@ -8,5 +8,6 @@ target/generated-sources/*
 target/maven-status/*
 target/test-classes/*
 *.rdb
+*.jar
 /public.tmp.k33g/
 
