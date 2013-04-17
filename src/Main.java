@@ -8,20 +8,22 @@ public class Main {
 
     public static void main(String[] args) {
         String httpHost = "localhost";
+        int clusterConnectionPort = 8081;
         String redisHost = "localhost";
-        Integer httpPort = 8080;
-        Integer redisPort = 6379;
+        int httpPort = 8080;
+        int redisPort = 6379;
         String staticAssets = "public";
         String defaultPage = "index.html";
 
 
         if(args.length > 0) {
             httpHost = args[0];
-            httpPort = Integer.parseInt(args[1]);
-            redisHost = args[2];
-            redisPort = Integer.parseInt(args[3]);
-            staticAssets = args[4];
-            defaultPage = args[5];
+            clusterConnectionPort = Integer.parseInt(args[1]);
+            httpPort = Integer.parseInt(args[2]);
+            redisHost = args[3];
+            redisPort = Integer.parseInt(args[4]);
+            staticAssets = args[5];
+            defaultPage = args[6];
         }
 
         //System.out.println(redisHost);
@@ -34,7 +36,7 @@ public class Main {
         }
 
 
-        Vertx vertx = Vertx.newVertx(httpHost);
+        Vertx vertx = Vertx.newVertx(clusterConnectionPort, httpHost);
 
         Routes.define(staticAssets, defaultPage);
 

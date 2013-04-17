@@ -5,12 +5,11 @@
 Lancer Redis en mode par défaut :`redis-server`
 
         httpPort = 8080
+        clusterConnectionPort = 8081 // pas encore complètement compris (mais du coup je lance +sieurs vert.x)
         redisPort = 6379
         staticAssets = "public";
         defaultPage = "index.html";
         
-        //httpost ?
-
 
 ##Mode "stand-alone"
 
@@ -37,13 +36,13 @@ Créer un script `monapp.sh` *(à rendre exécutable : `chmode +x`)*:
 
     #!/bin/sh
     #
-    java -jar alpesjugjsbattle-0.0.0-standalone.jar localhost <HTTP PORT> localhost <REDIS PORT> <VOTRE REPERTOIRE DE FICHIERS STATIQUES> <VOTRE PAGE WEB PAR DEFAUT>
+    java -jar alpesjugjsbattle-0.0.0-standalone.jar localhost <CLUSTER_PORT> <HTTP_PORT> localhost <REDIS_PORT> <VOTRE_REPERTOIRE_DE_FICHIERS_STATIQUES> <VOTRE_PAGE_WEB_PAR_DEFAUT>
 
 Par exemple :
 
     #!/bin/sh
     #
-    java -jar alpesjugjsbattle-0.0.0-standalone.jar localhost 9090 localhost 6666 public index.html
+    java -jar alpesjugjsbattle-0.0.0-standalone.jar localhost 9091 9090 localhost 6666 public index.html
 
 ###Lancer la bête
 
