@@ -1,0 +1,14 @@
+<form {{action save on=submit}}>
+  <label>Prénom : </label>
+  {{input class="input-medium" valueBinding="firstName"}}
+  <label>Nom : </label>
+  {{input class="input-medium" valueBinding="lastName"}}
+  <label>Twitter : </label>
+  {{input class="input-medium" valueBinding="twitter"}}
+  <label>Framework : </label>
+  {{input class="input-medium" valueBinding="framework"}}
+
+  <br>
+  {{#linkTo index class="btn"}}Annuler{{/linkTo}}
+  <button class="btn" type="submit">Ajouter</button>
+</form>
