@@ -14,50 +14,6 @@ window.App = {
     Views: {},
     Templates:{},
 
-    init: function(){
-        //App.router = new App.Routers.main();
-        console.log("=== APP init ===")
-        Backbone.history.start();
-
-
-        window.k33g = new this.Models.Player({
-            firstName:"Philippe",
-            lastName:"Charrière",
-            twitter : "k33g",
-            framework:"Backbone",
-            picture:"k33g"
-
-        });
-
-        window.sebmade = new this.Models.Player({
-            firstName:"Sébastien",
-            lastName:"Letélié",
-            twitter : "sebmade",
-            framework:"Angular",
-            picture:"sebmade"
-        });
-
-        window.tchak13 = new this.Models.Player({
-            firstName:"Paul",
-            lastName:"Chavar",
-            twitter : "tchak13",
-            framework:"Ember",
-            picture:"tchak13"
-        });
-
-
-
-
-        window.players = new this.Collections.Players([ sebmade, tchak13, k33g]);
-
-        window.playersView = new this.Views.Players({collection:players})
-
-        playersView.render();
-
-
-        players.on("change",function(){playersView.render()});
-
-    }
 };
 
 App.Models.Player = Backbone.Model.extend({
@@ -121,6 +77,9 @@ App.Views.Players = Backbone.View.extend({
             this.addOrRemove(event.currentTarget.checked ? 1 : -1);
             //App.Views.Players.selectedPlayers+=addOrRemove;
         }
+		/*
+			TO DO METTRE EN MEMOIRE les joueurs sélectionnés (tableau pour pouvoir les mettre sur un ring)
+		*/
     },
     selectedPlayers:0,
     addOrRemove:function(value) {
@@ -133,7 +92,7 @@ App.Views.Players = Backbone.View.extend({
 
         if(this.selectedPlayers==2)
             this.$(".alert").removeClass().addClass("alert alert-success").
-                html("<h4>Bravo ! Le combat peut commencer</h4>");
+                html("<h4>Bravo ! 1 combat peut commencer</h4>");
 
         if(this.selectedPlayers>2) this.$(".alert").removeClass().addClass("alert alert-error").
             html("<h4>Hop hop hop ! On a dit un contre un !!!</h4>");
@@ -141,6 +100,56 @@ App.Views.Players = Backbone.View.extend({
     }
 
 });
+
+
+App.init = function(){
+        //App.router = new App.Routers.main();
+        console.log("=== APP init ===")
+        Backbone.history.start();
+
+
+        window.k33g = new this.Models.Player({
+            firstName:"Philippe",
+            lastName:"Charrière",
+            twitter : "k33g",
+            framework:"Backbone",
+            picture:"k33g"
+
+        });
+
+        window.sebmade = new this.Models.Player({
+            firstName:"Sébastien",
+            lastName:"Letélié",
+            twitter : "sebmade",
+            framework:"Angular",
+            picture:"sebmade"
+        });
+
+        window.tchak13 = new this.Models.Player({
+            firstName:"Paul",
+            lastName:"Chavar",
+            twitter : "tchak13",
+            framework:"Ember",
+            picture:"tchak13"
+        });
+
+
+
+
+        window.players = new this.Collections.Players([ sebmade, tchak13, k33g]);
+
+        window.playersView = new this.Views.Players({collection:players})
+
+        playersView.render();
+
+
+        //players.on("change",function(){playersView.render()});
+		
+		playersView.listenTo(players, "change", playersView.render)
+		
+
+    }
+
 
 
 $(function() {
