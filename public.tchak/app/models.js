@@ -3,8 +3,27 @@ App.Player = DS.Model.extend({
   lastName:   DS.attr('string'),
   twitter:    DS.attr('string'),
   framework:  DS.attr('string'),
+  ready:      DS.attr('boolean', {defaultValue: false}),
 
-  isReady: false
+  isReady:    Ember.computed.alias('ready'),
+
+  isReadyDidChange: function() {
+    if (this.get('isDirty')) { this.save(); }
+  }.observes('isReady'),
+
+  fights: function() {
+    var player = this;
+    return App.Fight.filter(function(fight) {
+      return fight.get('opponentOne') === player ||
+        fight.get('opponentTwo') === player;
+    });
+  }.property(),
+
+  save: function() {
+    this.get('fights').invoke('adapterDidDirty');
+    this.get('fights').invoke('save');
+    this._super();
+  }
 });
 
 App.Fight = DS.Model.extend({
