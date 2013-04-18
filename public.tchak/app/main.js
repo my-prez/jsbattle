@@ -54,7 +54,11 @@ App.AddPlayerRoute = Ember.Route.extend({
     return App.Player.createRecord();
   },
   deactivate: function() {
-    this.get('controller.transaction').rollback();
+    Ember.run.next(this.get('controller'), function() {
+      if (!this.get('isSaving')) {
+        this.get('transaction').rollback();
+      }
+    });
   }
 });
 App.AddPlayerController = Ember.ObjectController.extend({
