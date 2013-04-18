@@ -20,7 +20,6 @@ App.Player = DS.Model.extend({
   }.property(),
 
   save: function() {
-    this.get('fights').invoke('adapterDidDirty');
     this.get('fights').invoke('save');
     this._super();
   }

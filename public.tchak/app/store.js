@@ -1,6 +1,16 @@
 App.Adapter = DS.BasicAdapter.extend({
   findAll: function(store, type) {
     this.findQuery(store, type, {}, {load: function() {}});
+  },
+
+  dirtyRecordsForRecordChange: function(dirtySet, record) {
+    this._super(dirtySet, record);
+
+    if (record instanceof App.Player) {
+      record.get('fights').forEach(function(fight) {
+        dirtySet.add(fight);
+      });
+    }
   }
 });
 
