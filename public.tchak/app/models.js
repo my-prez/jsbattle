@@ -59,7 +59,9 @@ App.loadFight = function(process, data) {
   });
 };
 
-App.Player.sync = App.Sync.create({url: 'players'});
+App.Player.sync = App.Sync.create({
+  url: 'players'
+});
 App.Fight.sync = App.Sync.create({
   url: 'fights',
   query: function(query, process) {

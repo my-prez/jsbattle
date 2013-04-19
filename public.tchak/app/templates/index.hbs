@@ -8,7 +8,7 @@
   {{#each players}}
     <div class="span4">
       <div class="well">
-        <h4>{{firstName}} {{lastName}}</h4>
+        <h4>{{#linkTo player.edit this}}{{firstName}} {{lastName}}{{/linkTo}}</h4>
 
         <p>{{twitter}} - {{framework}}</p>
         <label class="checkbox">
@@ -22,7 +22,7 @@
   {{/each}}
 </div>
 
-{{#linkTo addPlayer class="btn"}}Ajouter un joueur{{/linkTo}}
+{{#linkTo player class="btn"}}Ajouter un joueur{{/linkTo}}
 
 {{#if readyToFight}}
   <a class="btn" {{action createFight}}>Envoyer sur le ring</a>

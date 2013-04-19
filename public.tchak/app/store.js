@@ -35,6 +35,13 @@ App.Sync = Ember.Object.extend({
   buildUrl: function(id) {
     return ['', this.url, id].compact().join('/');
   },
+  find: function(id, process) {
+    var url = this.buildUrl(id);
+
+    $.getJSON(url, function(data) {
+      process(data).load();
+    });
+  },
   query: function(query, process) {
     var url = this.buildUrl();
 

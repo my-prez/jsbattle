@@ -3,13 +3,18 @@ window.App = Ember.Application.create({
   templates: [
     'application',
     'index',
-    'add_player',
+    'player',
+    'player/index',
+    'player/edit',
+    'player/_form',
     'opponent'
   ]
 });
 
 App.Router.map(function() {
-  this.route('addPlayer');
+  this.resource('player', function() {
+    this.route('edit', {path: ':player_id'});
+  });
   this.route('fight');
 });
 
@@ -33,6 +38,7 @@ App.IndexRoute = Ember.Route.extend({
     }
   }
 });
+
 App.IndexController = Ember.Controller.extend({
   players: function() {
     return App.Player.find();
@@ -49,25 +55,6 @@ App.IndexController = Ember.Controller.extend({
   readyToFight: Em.computed.gte('selectedPlayers.length', 2)
 });
 
-App.AddPlayerRoute = Ember.Route.extend({
-  model: function() {
-    return App.Player.createRecord();
-  },
-  deactivate: function() {
-    Ember.run.next(this.get('controller'), function() {
-      if (!this.get('isSaving')) {
-        this.get('transaction').rollback();
-      }
-    });
-  }
-});
-App.AddPlayerController = Ember.ObjectController.extend({
-  save: function() {
-    this.get('content').save();
-    this.transitionToRoute('index');
-  }
-});
-
 App.OpponentController = Ember.ObjectController.extend({
   isZero: Em.computed.equal('score', 0),
   incrementScore: function() {
@@ -77,5 +64,33 @@ App.OpponentController = Ember.ObjectController.extend({
   decrementScore: function() {
     this.decrementProperty('score');
     this.get('fight').save();
+  }
+});
+
+App.PlayerEditRoute = Ember.Route.extend({
+  deactivate: function() {
+    Ember.run.next(this.player(), function() {
+      if (!this.get('isSaving')) {
+        this.get('transaction').rollback();
+      }
+    });
+  },
+  events: {
+    save: function() {
+      this.player().save();
+      this.transitionTo('index');
+    }
+  },
+  player: function() {
+    return this.modelFor('player.edit');
+  }
+});
+
+App.PlayerIndexRoute = App.PlayerEditRoute.extend({
+  model: function() {
+    return App.Player.createRecord();
+  },
+  player: function() {
+    return this.modelFor('player.index');
   }
 });
