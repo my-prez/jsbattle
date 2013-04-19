@@ -1,4 +1,4 @@
-// Last commit: ef6f753 (2013-04-15 22:18:12 -0700)
+// Last commit: acf32df (2013-04-19 10:28:39 -0700)
 
 
 (function() {
@@ -188,6 +188,213 @@ DS.RecordArray = Ember.ArrayProxy.extend(Ember.Evented, LoadPromise, {
 
 
 (function() {
+var get = Ember.get, set = Ember.set;
+var once = Ember.run.once;
+var forEach = Ember.EnumerableUtils.forEach;
+
+DS.RecordArrayManager = Ember.Object.extend({
+  init: function() {
+    this.filteredRecordArrays = Ember.MapWithDefault.create({
+      defaultValue: function() { return []; }
+    });
+
+    this.changedReferences = [];
+  },
+
+  referenceDidChange: function(reference) {
+    this.changedReferences.push(reference);
+    once(this, this.updateRecordArrays);
+  },
+
+  recordArraysForReference: function(reference) {
+    reference.recordArrays = reference.recordArrays || Ember.OrderedSet.create();
+    return reference.recordArrays;
+  },
+
+  /**
+    @private
+
+    This method is invoked whenever data is loaded into the store
+    by the adapter or updated by the adapter, or when an attribute
+    changes on a record.
+
+    It updates all filters that a record belongs to.
+
+    To avoid thrashing, it only runs once per run loop per record.
+
+    @param {Class} type
+    @param {Number|String} clientId
+  */
+  updateRecordArrays: function() {
+    forEach(this.changedReferences, function(reference) {
+      var type = reference.type,
+          recordArrays = this.filteredRecordArrays.get(type),
+          filter;
+
+      recordArrays.forEach(function(array) {
+        filter = get(array, 'filterFunction');
+        this.updateRecordArray(array, filter, type, reference);
+      }, this);
+
+      // loop through all manyArrays containing an unloaded copy of this
+      // clientId and notify them that the record was loaded.
+      var manyArrays = reference.loadingRecordArrays;
+
+      if (manyArrays) {
+        for (var i=0, l=manyArrays.length; i<l; i++) {
+          manyArrays[i].loadedRecord();
+        }
+
+        reference.loadingRecordArrays = [];
+      }
+    }, this);
+  },
+
+  /**
+    @private
+
+    Update an individual filter.
+
+    @param {DS.FilteredRecordArray} array
+    @param {Function} filter
+    @param {Class} type
+    @param {Number|String} clientId
+  */
+  updateRecordArray: function(array, filter, type, reference) {
+    var shouldBeInArray, record;
+
+    if (!filter) {
+      shouldBeInArray = true;
+    } else {
+      record = this.store.recordForReference(reference);
+      shouldBeInArray = filter(record);
+    }
+
+    var recordArrays = this.recordArraysForReference(reference);
+
+    if (shouldBeInArray) {
+      recordArrays.add(array);
+      array.addReference(reference);
+    } else if (!shouldBeInArray) {
+      recordArrays.remove(array);
+      array.removeReference(reference);
+    }
+  },
+
+  /**
+    @private
+
+    When a record is deleted, it is removed from all its
+    record arrays.
+
+    @param {DS.Model} record
+  */
+  remove: function(record) {
+    var reference = get(record, 'reference');
+    var recordArrays = reference.recordArrays || [];
+
+    recordArrays.forEach(function(array) {
+      array.removeReference(reference);
+    });
+  },
+
+  /**
+    @private
+
+    This method is invoked if the `filterFunction` property is
+    changed on a `DS.FilteredRecordArray`.
+
+    It essentially re-runs the filter from scratch. This same
+    method is invoked when the filter is created in th first place.
+  */
+  updateFilter: function(array, type, filter) {
+    var typeMap = this.store.typeMapFor(type),
+        references = typeMap.references,
+        reference, data, shouldFilter, record;
+
+    for (var i=0, l=references.length; i<l; i++) {
+      reference = references[i];
+      shouldFilter = false;
+
+      data = reference.data;
+
+      if (typeof data === 'object') {
+        if (record = reference.record) {
+          if (!get(record, 'isDeleted')) { shouldFilter = true; }
+        } else {
+          shouldFilter = true;
+        }
+
+        if (shouldFilter) {
+          this.updateRecordArray(array, filter, type, reference);
+        }
+      }
+    }
+  },
+
+  /**
+    @private
+
+    Create a `DS.ManyArray` for a type and list of record references, and index
+    the `ManyArray` under each reference. This allows us to efficiently remove
+    records from `ManyArray`s when they are deleted.
+
+    @param {Class} type
+    @param {Array} references
+
+    @return {DS.ManyArray}
+  */
+  createManyArray: function(type, references) {
+    var manyArray = DS.ManyArray.create({
+      type: type,
+      content: references,
+      store: this.store
+    });
+
+    references.forEach(function(reference) {
+      var arrays = this.recordArraysForReference(reference);
+      arrays.add(manyArray);
+    }, this);
+
+    return manyArray;
+  },
+
+  /**
+    @private
+
+    Register a RecordArray for a given type to be backed by
+    a filter function. This will cause the array to update
+    automatically when records of that type change attribute
+    values or states.
+
+    @param {DS.RecordArray} array
+    @param {Class} type
+    @param {Function} filter
+  */
+  registerFilteredRecordArray: function(array, type, filter) {
+    var recordArrays = this.filteredRecordArrays.get(type);
+    recordArrays.push(array);
+
+    this.updateFilter(array, type, filter);
+  },
+
+  // Internally, we maintain a map of all unloaded IDs requested by
+  // a ManyArray. As the adapter loads data into the store, the
+  // store notifies any interested ManyArrays. When the ManyArray's
+  // total number of loading records drops to zero, it becomes
+  // `isLoaded` and fires a `didLoad` event.
+  registerWaitingRecordArray: function(array, reference) {
+    var loadingRecordArrays = reference.loadingRecordArrays || [];
+    loadingRecordArrays.push(array);
+    reference.loadingRecordArrays = loadingRecordArrays;
+  }
+});
+
+})();
+
+
+
+(function() {
 /**
   @module data
   @submodule data-record-array
@@ -211,8 +418,8 @@ DS.FilteredRecordArray = DS.RecordArray.extend({
   },
 
   updateFilter: Ember.observer(function() {
-    var store = get(this, 'store');
-    store.updateRecordArrayFilter(this, get(this, 'type'), get(this, 'filterFunction'));
+    var manager = get(this, 'manager');
+    manager.updateFilter(this, get(this, 'type'), get(this, 'filterFunction'));
   }, 'filterFunction')
 });
 
@@ -356,7 +563,7 @@ DS.ManyArray = DS.RecordArray.extend({
     // Map the array of record objects into an array of  client ids.
     added = added.map(function(record) {
       Ember.assert("You can only add records of " + (get(this, 'type') && get(this, 'type').toString()) + " to this relationship.", !get(this, 'type') || (get(this, 'type').detectInstance(record)) );
-      return get(record, '_reference');
+      return get(record, 'reference');
     }, this);
 
     this._super(index, removed, added);
@@ -383,7 +590,7 @@ DS.ManyArray = DS.RecordArray.extend({
       for (var i=index; i<index+removed; i++) {
         var reference = get(this, 'content').objectAt(i);
 
-        var change = DS.RelationshipChange.createChange(owner.get('_reference'), reference, get(this, 'store'), {
+        var change = DS.RelationshipChange.createChange(owner.get('reference'), reference, get(this, 'store'), {
           parentType: owner.constructor,
           changeType: "remove",
           kind: "hasMany",
@@ -412,7 +619,7 @@ DS.ManyArray = DS.RecordArray.extend({
       for (var i=index; i<index+added; i++) {
         var reference = get(this, 'content').objectAt(i);
 
-        var change = DS.RelationshipChange.createChange(owner.get('_reference'), reference, store, {
+        var change = DS.RelationshipChange.createChange(owner.get('reference'), reference, store, {
           parentType: owner.constructor,
           changeType: "add",
           kind:"hasMany",
@@ -563,13 +770,7 @@ DS.Transaction = Ember.Object.extend({
     type.
   */
   init: function() {
-    set(this, 'buckets', {
-      clean:    Ember.OrderedSet.create(),
-      created:  Ember.OrderedSet.create(),
-      updated:  Ember.OrderedSet.create(),
-      deleted:  Ember.OrderedSet.create(),
-      inflight: Ember.OrderedSet.create()
-    });
+    set(this, 'records', Ember.OrderedSet.create());
 
     set(this, 'relationships', Ember.OrderedSet.create());
   },
@@ -602,26 +803,13 @@ DS.Transaction = Ember.Object.extend({
 
   /**
     Adds an existing record to this transaction. Only records without
-    modficiations (i.e., records whose `isDirty` property is `false`)
+    modificiations (i.e., records whose `isDirty` property is `false`)
     can be added to a transaction.
 
     @param {DS.Model} record the record to add to the transaction
   */
   add: function(record) {
     Ember.assert("You must pass a record into transaction.add()", record instanceof DS.Model);
-
-    var recordTransaction = get(record, 'transaction'),
-        defaultTransaction = get(this, 'store.defaultTransaction');
-
-    // Make `add` idempotent
-    if (recordTransaction === this) { return; }
-
-    // XXX it should be possible to move a dirty transaction from the default transaction
-
-    // we could probably make this work if someone has a valid use case. Do you?
-    Ember.assert("Once a record has changed, you cannot move it into a different transaction", !get(record, 'isDirty'));
-
-    Ember.assert("Models cannot belong to more than one transaction at a time.", recordTransaction === defaultTransaction);
 
     this.adoptRecord(record);
   },
@@ -648,30 +836,16 @@ DS.Transaction = Ember.Object.extend({
     var adapter = get(store, '_adapter');
     var defaultTransaction = get(store, 'defaultTransaction');
 
-    var iterate = function(records) {
-      var set = records.copy();
-      set.forEach(function (record) {
-        record.send('willCommit');
-      });
-      return set;
-    };
-
-    var relationships = get(this, 'relationships');
-
-    var commitDetails = {
-      created: iterate(this.bucketForType('created')),
-      updated: iterate(this.bucketForType('updated')),
-      deleted: iterate(this.bucketForType('deleted')),
-      relationships: relationships
-    };
-
     if (this === defaultTransaction) {
       set(store, 'defaultTransaction', store.transaction());
     }
 
     this.removeCleanRecords();
+    var relationships = get(this, 'relationships');
 
-    if (!commitDetails.created.isEmpty() || !commitDetails.updated.isEmpty() || !commitDetails.deleted.isEmpty() || !relationships.isEmpty()) {
+    var commitDetails = this._commitDetails();
+
+    if (!commitDetails.created.isEmpty() || !commitDetails.updated.isEmpty() || !commitDetails.deleted.isEmpty() || !commitDetails.relationships.isEmpty()) {
 
       Ember.assert("You tried to commit records but you have no adapter", adapter);
       Ember.assert("You tried to commit records but your adapter does not implement `commit`", adapter.commit);
@@ -685,6 +859,26 @@ DS.Transaction = Ember.Object.extend({
     relationships.forEach(function(relationship) {
       relationship.destroy();
     });
+  },
+
+  _commitDetails: function() {
+    var relationships = get(this, 'relationships');
+    var commitDetails = {
+      created: Ember.OrderedSet.create(),
+      updated: Ember.OrderedSet.create(),
+      deleted: Ember.OrderedSet.create(),
+      relationships: relationships
+    };
+
+    var records = get(this, 'records');
+
+    records.forEach(function(record) {
+      if(!get(record, 'isDirty')) return;
+      record.send('willCommit');
+      commitDetails[get(record, 'dirtyType')].add(record);
+    });
+
+    return commitDetails;
   },
 
   /**
@@ -701,21 +895,40 @@ DS.Transaction = Ember.Object.extend({
     current transaction should not be used again.
   */
   rollback: function() {
-    // Loop through all of the records in each of the dirty states
-    // and initiate a rollback on them. As a side effect of telling
-    // the record to roll back, it should also move itself out of
-    // the dirty bucket and into the clean bucket.
-    ['created', 'updated', 'deleted', 'inflight'].forEach(function(bucketType) {
-      var records = this.bucketForType(bucketType);
-      forEach(records, function(record) {
-        record.send('rollback');
-      });
-      records.clear();
-    }, this);
+    var store = get(this, 'store');
+
+    // Destroy all relationship changes and compute
+    // all references affected
+    var references = Ember.OrderedSet.create();
+    var relationships = get(this, 'relationships');
+    relationships.forEach(function(r) {
+      references.add(r.firstRecordReference);
+      references.add(r.secondRecordReference);
+      r.destroy();
+    });
+    relationships.clear();
+
+    var records = get(this, 'records');
+    records.forEach(function(record) {
+      if (!record.get('isDirty')) return;
+      record.send('rollback');
+    });
 
     // Now that all records in the transaction are guaranteed to be
     // clean, migrate them all to the store's default transaction.
     this.removeCleanRecords();
+
+    // Remaining associated references are not part of the transaction, but
+    // can still have hasMany's which have not been reloaded
+    references.forEach(function(r) {
+
+      if (r && r.record) {
+        var record = r.record;
+        record.suspendRelationshipObservers(function() {
+          record.reloadHasManys();
+        });
+      }
+    }, this);
   },
 
   /**
@@ -741,27 +954,12 @@ DS.Transaction = Ember.Object.extend({
     Removes all of the records in the transaction's clean bucket.
   */
   removeCleanRecords: function() {
-    var clean = this.bucketForType('clean');
-    clean.forEach(function(record) {
-      this.remove(record);
-    }, this);
-    clean.clear();
-  },
-
-  /**
-    @private
-
-    Returns the bucket for the given bucket type. For example, you might call
-    `this.bucketForType('updated')` to get the `Ember.Map` that contains all
-    of the records that have changes pending.
-
-    @param {String} bucketType the type of bucket
-    @returns Ember.Map
-  */
-  bucketForType: function(bucketType) {
-    var buckets = get(this, 'buckets');
-
-    return get(buckets, bucketType);
+    var records = get(this, 'records');
+    records.forEach(function(record) {
+      if(!record.get('isDirty')) {
+        this.remove(record);
+      }
+    }, this); 
   },
 
   /**
@@ -782,81 +980,51 @@ DS.Transaction = Ember.Object.extend({
     var oldTransaction = get(record, 'transaction');
 
     if (oldTransaction) {
-      oldTransaction.removeFromBucket('clean', record);
+      oldTransaction.removeRecord(record);
     }
 
-    this.addToBucket('clean', record);
+    get(this, 'records').add(record);
     set(record, 'transaction', this);
   },
 
   /**
-    @private
+   @private
 
-    Adds a record to the named bucket.
-
-    @param {String} bucketType one of `clean`, `created`, `updated`, or `deleted`
+   Removes the record without performing the normal checks
+   to ensure that the record is re-added to the store's
+   default transaction.
   */
-  addToBucket: function(bucketType, record) {
-    this.bucketForType(bucketType).add(record);
-  },
-
-  /**
-    @private
-
-    Removes a record from the named bucket.
-
-    @param {String} bucketType one of `clean`, `created`, `updated`, or `deleted`
-  */
-  removeFromBucket: function(bucketType, record) {
-    this.bucketForType(bucketType).remove(record);
-  },
-
-  /**
-    @private
-
-    Called by a record's state manager to indicate that the record has entered
-    a dirty state. The record will be moved from the `clean` bucket and into
-    the appropriate dirty bucket.
-
-    @param {String} bucketType one of `created`, `updated`, or `deleted`
-  */
-  recordBecameDirty: function(bucketType, record) {
-    this.removeFromBucket('clean', record);
-    this.addToBucket(bucketType, record);
-  },
-
-  /**
-    @private
-
-    Called by a record's state manager to indicate that the record has entered
-    inflight state. The record will be moved from its current dirty bucket and into
-    the `inflight` bucket.
-
-    @param {String} bucketType one of `created`, `updated`, or `deleted`
-  */
-  recordBecameInFlight: function(kind, record) {
-    this.removeFromBucket(kind, record);
-    this.addToBucket('inflight', record);
-  },
-
-  recordIsMoving: function(kind, record) {
-    this.removeFromBucket(kind, record);
-    this.addToBucket('clean', record);
-  },
-
-  /**
-    @private
-
-    Called by a record's state manager to indicate that the record has entered
-    a clean state. The record will be moved from its current dirty or inflight bucket and into
-    the `clean` bucket.
-
-    @param {String} bucketType one of `created`, `updated`, or `deleted`
-  */
-  recordBecameClean: function(kind, record) {
-    this.removeFromBucket(kind, record);
-    this.remove(record);
+  removeRecord: function(record) {
+    get(this, 'records').remove(record);
   }
+
+});
+
+DS.Transaction.reopenClass({
+  ensureSameTransaction: function(records){
+    var transactions = Ember.A();
+    forEach( records, function(record){
+      if (record){ transactions.pushObject(get(record, 'transaction')); }
+    });
+
+    var transaction = transactions.reduce(function(prev, t) {
+      if (!get(t, 'isDefault')) {
+        if (prev === null) { return t; }
+        Ember.assert("All records in a changed relationship must be in the same transaction. You tried to change the relationship between records when one is in " + t + " and the other is in " + prev, t === prev);
+      }
+
+      return prev;
+    }, null);
+
+    if (transaction) {
+      forEach( records, function(record){
+        if (record){ transaction.add(record); }
+      });
+    } else {
+      transaction = transactions.objectAt(0);
+    }
+    return transaction;
+   }
 });
 
 })();
@@ -1008,8 +1176,11 @@ DS._Mappable.generateMapFunctionFor = function(mapName, transform) {
   @submodule data-store
 */
 
-var get = Ember.get, set = Ember.set, once = Ember.run.once;
+var get = Ember.get, set = Ember.set;
+var once = Ember.run.once;
+var isNone = Ember.isNone;
 var forEach = Ember.EnumerableUtils.forEach;
+var map = Ember.EnumerableUtils.map;
 
 // These values are used in the data cache when clientIds are
 // needed but the underlying data has not yet been loaded by
@@ -1025,10 +1196,13 @@ var CREATED = { created: true };
 //   scheme:
 //
 //   * +id+ means an identifier managed by an external source, provided inside
-//     the data provided by that source.
+//     the data provided by that source. These are always coerced to be strings
+//     before being used internally.
 //   * +clientId+ means a transient numerical identifier generated at runtime by
 //     the data store. It is important primarily because newly created objects may
 //     not yet have an externally generated id.
+//   * +reference+ means a record reference object, which holds metadata about a
+//     record, even if it has not yet been fully materialized.
 //   * +type+ means a subclass of DS.Model.
 
 // Used by the store to normalize IDs entering the store.  Despite the fact
@@ -1041,25 +1215,35 @@ var coerceId = function(id) {
   return id == null ? null : id+'';
 };
 
-var map = Ember.EnumerableUtils.map;
 
 /**
   The store contains all of the data for records loaded from the server.
-  It is also responsible for creating instances of DS.Model that wraps
+  It is also responsible for creating instances of DS.Model that wrap
   the individual data for a record, so that they can be bound to in your
   Handlebars templates.
 
-  Create a new store like this:
+  Define your application's store like this:
 
-       MyApp.store = DS.Store.create();
+       MyApp.Store = DS.Store.extend();
 
-  You can retrieve DS.Model instances from the store in several ways. To retrieve
-  a record for a specific id, use the `find()` method:
+  Most Ember.js applications will only have a single `DS.Store` that is
+  automatically created by their `Ember.Application`.
 
-       var record = MyApp.store.find(MyApp.Contact, 123);
+  You can retrieve models from the store in several ways. To retrieve a record
+  for a specific id, use `DS.Model`'s `find()` method:
 
-   By default, the store will talk to your backend using a standard REST mechanism.
-   You can customize how the store talks to your backend by specifying a custom adapter:
+       var person = App.Person.find(123);
+
+  If your application has multiple `DS.Store` instances (an unusual case), you can
+  specify which store should be used:
+
+      var person = store.find(App.Person, 123);
+
+  In general, you should retrieve models using the methods on `DS.Model`; you should
+  rarely need to interact with the store directly.
+
+  By default, the store will talk to your backend using a standard REST mechanism.
+  You can customize how the store talks to your backend by specifying a custom adapter:
 
        MyApp.store = DS.Store.create({
          adapter: 'MyApp.CustomAdapter'
@@ -1080,7 +1264,7 @@ DS.Store = Ember.Object.extend(DS._Mappable, {
     Many methods can be invoked without specifying which store should be used.
     In those cases, the first store created will be used as the default. If
     an application has multiple stores, it should specify which store to use
-    when performing actions, such as finding records by id.
+    when performing actions, such as finding records by ID.
 
     The init method registers this store as the default if none is specified.
   */
@@ -1098,24 +1282,12 @@ DS.Store = Ember.Object.extend(DS._Mappable, {
 
     // internal bookkeeping; not observable
     this.typeMaps = {};
-    this.recordCache = [];
-    this.clientIdToId = {};
-    this.clientIdToType = {};
-    this.clientIdToData = {};
-    this.clientIdToPrematerializedData = {};
-    this.recordArraysByClientId = {};
+    this.recordArrayManager = DS.RecordArrayManager.create({
+      store: this
+    });
     this.relationshipChanges = {};
-    this.recordReferences = {};
 
-    // Internally, we maintain a map of all unloaded IDs requested by
-    // a ManyArray. As the adapter loads data into the store, the
-    // store notifies any interested ManyArrays. When the ManyArray's
-    // total number of loading records drops to zero, it becomes
-    // `isLoaded` and fires a `didLoad` event.
-    this.loadingRecordArrays = {};
-
-    this._recordsToSave = Ember.OrderedSet.create();
-
+    set(this, 'currentTransaction', this.transaction());
     set(this, 'defaultTransaction', this.transaction());
   },
 
@@ -1140,31 +1312,6 @@ DS.Store = Ember.Object.extend(DS._Mappable, {
     return DS.Transaction.create({ store: this });
   },
 
-  ensureSameTransaction: function(records){
-    var transactions = Ember.A();
-    forEach( records, function(record){
-      if (record){ transactions.pushObject(get(record, 'transaction')); }
-    });
-
-    var transaction = transactions.reduce(function(prev, t) {
-      if (!get(t, 'isDefault')) {
-        if (prev === null) { return t; }
-        Ember.assert("All records in a changed relationship must be in the same transaction. You tried to change the relationship between records when one is in " + t + " and the other is in " + prev, t === prev);
-      }
-
-      return prev;
-    }, null);
-
-    if (transaction) {
-      forEach( records, function(record){
-        if (record){ transaction.add(record); }
-      });
-    } else {
-      transaction = transactions.objectAt(0);
-    }
-    return transaction;
-
-   },
   /**
     @private
 
@@ -1183,45 +1330,20 @@ DS.Store = Ember.Object.extend(DS._Mappable, {
     @param {DS.Model} record
   */
   materializeData: function(record) {
-    var clientId = get(record, 'clientId'),
-        cidToData = this.clientIdToData,
-        adapter = this.adapterForType(record.constructor),
-        data = cidToData[clientId];
+    var reference = get(record, 'reference'),
+        data = reference.data,
+        adapter = this.adapterForType(record.constructor);
 
-    cidToData[clientId] = MATERIALIZED;
+    reference.data = MATERIALIZED;
 
-    var prematerialized = this.clientIdToPrematerializedData[clientId];
-
-    // Ensures the record's data structures are setup
-    // before being populated by the adapter.
     record.setupData();
 
     if (data !== CREATED) {
       // Instructs the adapter to extract information from the
       // opaque data and materialize the record's attributes and
       // relationships.
-      adapter.materialize(record, data, prematerialized);
+      adapter.materialize(record, data, reference.prematerialized);
     }
-  },
-
-  /**
-    @private
-
-    Returns true if there is already a record for this clientId.
-
-    This is used to determine whether cleanup is required, so that
-    "changes" to unmaterialized records do not trigger mass
-    materialization.
-
-    For example, if a parent record in a relationship with a large
-    number of children is deleted, we want to avoid materializing
-    those children.
-
-    @param {Object} reference
-    @return {Boolean}
-  */
-  recordIsMaterialized: function(reference) {
-    return !!this.recordCache[reference.clientId];
   },
 
   /**
@@ -1232,7 +1354,11 @@ DS.Store = Ember.Object.extend(DS._Mappable, {
 
     @property {DS.Adapter|String}
   */
-  adapter: 'DS.RESTAdapter',
+  adapter: Ember.computed(function(){
+    Ember.debug("A custom DS.Adapter was not provided as the 'Adapter' property of your application's Store. The default (DS.RESTAdapter) will be used.");
+    return 'DS.RESTAdapter';
+  }).property(),
+
 
   /**
     @private
@@ -1339,15 +1465,17 @@ DS.Store = Ember.Object.extend(DS._Mappable, {
     // give the adapter an opportunity to generate one. Typically,
     // client-side ID generators will use something like uuid.js
     // to avoid conflicts.
-    var adapter;
-    if (Ember.isNone(id)) {
-      adapter = this.adapterForType(type);
+
+    if (isNone(id)) {
+      var adapter = this.adapterForType(type);
+
       if (adapter && adapter.generateIdForRecord) {
         id = coerceId(adapter.generateIdForRecord(this, record));
         properties.id = id;
       }
     }
 
+    // Coerce ID to a string
     id = coerceId(id);
 
     // Create a new `clientId` and associate it with the
@@ -1356,23 +1484,19 @@ DS.Store = Ember.Object.extend(DS._Mappable, {
     // the sentinel value CREATED as the data for this
     // clientId. If we see this value later, we will skip
     // materialization.
-    var clientId = this.pushData(CREATED, id, type);
+    var reference = this.createReference(type, id);
+    reference.data = CREATED;
 
-    // Now that we have a clientId, attach it to the record we
+    // Now that we have a reference, attach it to the record we
     // just created.
-    set(record, 'clientId', clientId);
+    set(record, 'reference', reference);
+    reference.record = record;
 
     // Move the record out of its initial `empty` state into
     // the `loaded` state.
     record.loadedData();
 
-    // Make sure the data is set up so the record doesn't
-    // try to materialize its nonexistent data.
     record.setupData();
-
-    // Store the record we just created in the record cache for
-    // this clientId.
-    this.recordCache[clientId] = record;
 
     // Set the properties specified on the record.
     record.setProperties(properties);
@@ -1493,28 +1617,35 @@ DS.Store = Ember.Object.extend(DS._Mappable, {
     `getByReference`.
   */
   findById: function(type, id) {
-    var clientId = this.typeMapFor(type).idToCid[id];
+    var reference;
 
-    // A record can have a reference without being loaded
-    // (through a hasMany relationship). In that case, we need to
-    // materialize the record.
-    if (clientId && this.clientIdToData[clientId] !== UNLOADED) {
-      return this.findByClientId(type, clientId);
+    if (this.hasReferenceForId(type, id)) {
+      reference = this.referenceForId(type, id);
+
+      if (reference.data !== UNLOADED) {
+        return this.recordForReference(reference);
+      }
     }
 
-    clientId = this.pushData(LOADING, id, type);
+    if (!reference) {
+      reference = this.createReference(type, id);
+    }
+
+    reference.data = LOADING;
 
     // create a new instance of the model type in the
     // 'isLoading' state
-    var record = this.materializeRecord(type, clientId, id);
+    var record = this.materializeRecord(reference);
 
-    // let the adapter set the data, possibly async
-    var adapter = this.adapterForType(type);
+    if (reference.data === LOADING) {
+      // let the adapter set the data, possibly async
+      var adapter = this.adapterForType(type);
 
-    Ember.assert("You tried to find a record but you have no adapter (for " + type + ")", adapter);
-    Ember.assert("You tried to find a record but your adapter does not implement `find`", adapter.find);
+      Ember.assert("You tried to find a record but you have no adapter (for " + type + ")", adapter);
+      Ember.assert("You tried to find a record but your adapter does not implement `find`", adapter.find);
 
-    adapter.find(this, type, id);
+      adapter.find(this, type, id);
+    }
 
     return record;
   },
@@ -1534,44 +1665,26 @@ DS.Store = Ember.Object.extend(DS._Mappable, {
   /**
     @private
 
-    This method returns a record for a given clientId.
+    This method returns a record for a given record refeence.
 
-    If there is no record object yet for the clientId, this method materializes
-    a new record object. This allows adapters to eagerly load large amounts of
-    data into the store, and avoid incurring the cost to create the objects
-    until they are requested.
-
-    Several parts of Ember Data call this method:
-
-    * findById, if a clientId already exists for a given type and
-      id combination
-    * OneToManyChange, which is backed by clientIds, when getChild,
-      getOldParent or getNewParent are called
-    * RecordArray, which is backed by clientIds, when an object at
-      a particular index is looked up
+    If no record for the reference has yet been materialzed, this method will
+    materialize a new `DS.Model` instance. This allows adapters to eagerly load
+    large amounts of data into the store, and avoid incurring the cost of
+    creating models until they are requested.
 
     In short, it's a convenient way to get a record for a known
-    clientId, materializing it if necessary.
+    record reference, materializing it if necessary.
 
-    @param {Class} type
-    @param {Number|String} clientId
+    @param {Object} reference
+    @returns {DS.Model}
   */
-  findByClientId: function(type, clientId) {
-    var cidToData, record, id;
-
-    record = this.recordCache[clientId];
+  recordForReference: function(reference) {
+    var record = reference.record;
 
     if (!record) {
       // create a new instance of the model type in the
       // 'isLoading' state
-      id = this.clientIdToId[clientId];
-      record = this.materializeRecord(type, clientId, id);
-
-      cidToData = this.clientIdToData;
-
-      if (typeof cidToData[clientId] === 'object') {
-        record.loadedData();
-      }
+      record = this.materializeRecord(reference);
     }
 
     return record;
@@ -1586,21 +1699,19 @@ DS.Store = Ember.Object.extend(DS._Mappable, {
     In preparation for loading, this method also marks any unloaded
     `clientId`s as loading.
   */
-  neededReferences: function(references) {
-    var neededReferences = [],
-        cidToData = this.clientIdToData,
-        reference;
+  unloadedReferences: function(references) {
+    var unloadedReferences = [];
 
     for (var i=0, l=references.length; i<l; i++) {
-      reference = references[i];
+      var reference = references[i];
 
-      if (cidToData[reference.clientId] === UNLOADED) {
-        neededReferences.push(reference);
-        cidToData[reference.clientId] = LOADING;
+      if (reference.data === UNLOADED) {
+        unloadedReferences.push(reference);
+        reference.data = LOADING;
       }
     }
 
-    return neededReferences;
+    return unloadedReferences;
   },
 
   /**
@@ -1613,16 +1724,17 @@ DS.Store = Ember.Object.extend(DS._Mappable, {
     then invokes `findMany` on the adapter.
   */
   fetchUnloadedReferences: function(references, owner) {
-    var neededReferences = this.neededReferences(references);
-    this.fetchMany(neededReferences, owner);
+    var unloadedReferences = this.unloadedReferences(references);
+    this.fetchMany(unloadedReferences, owner);
   },
 
   /**
     @private
 
-    This method takes a list of `reference`s, group the `reference`s by type,
+    This method takes a list of `reference`s, groups the `reference`s by type,
     converts the `reference`s into IDs, and then invokes the adapter's `findMany`
     method.
+
     The `reference`s are grouped by type to invoke `findMany` on adapters
     for each unique type in `reference`s.
 
@@ -1654,33 +1766,26 @@ DS.Store = Ember.Object.extend(DS._Mappable, {
     }, this);
   },
 
-  referenceForId: function(type, id) {
-    var clientId = this.clientIdForId(type, id);
-    return this.referenceForClientId(clientId);
+  hasReferenceForId: function(type, id) {
+    id = coerceId(id);
+
+    return !!this.typeMapFor(type).idToReference[id];
   },
 
-  referenceForClientId: function(clientId) {
-    var references = this.recordReferences;
+  referenceForId: function(type, id) {
+    id = coerceId(id);
 
-    if (references[clientId]) {
-      return references[clientId];
+    // Check to see if we have seen this type/id pair before.
+    var reference = this.typeMapFor(type).idToReference[id];
+
+    // If not, create a reference for it but don't populate it
+    // with any data yet.
+    if (!reference) {
+      reference = this.createReference(type, id);
+      reference.data = UNLOADED;
     }
 
-    var type = this.clientIdToType[clientId];
-
-    return references[clientId] = {
-      id: this.idForClientId(clientId),
-      clientId: clientId,
-      type: type
-    };
-  },
-
-  isReferenceMaterialized: function(reference) {
-    return !!this.recordCache[reference.clientId];
-  },
-
-  recordForReference: function(reference) {
-    return this.findByClientId(reference.type, reference.clientId);
+    return reference;
   },
 
   /**
@@ -1697,7 +1802,7 @@ DS.Store = Ember.Object.extend(DS._Mappable, {
     * create a new ManyArray whose content is *all* of the clientIds
     * notify the ManyArray of the number of its elements that are
       already loaded
-    * insert the unloaded clientIds into the `loadingRecordArrays`
+    * insert the unloaded references into the `loadingRecordArrays`
       bookkeeping structure, which will allow the `ManyArray` to know
       when all of its loading elements are loaded from the server.
     * ask the adapter to load the unloaded elements, by invoking
@@ -1722,7 +1827,7 @@ DS.Store = Ember.Object.extend(DS._Mappable, {
         Ember.assert("You tried to load many records but your adapter does not implement `findHasMany`", adapter.findHasMany);
       }
 
-      return this.createManyArray(type, Ember.A());
+      return this.recordArrayManager.createManyArray(type, Ember.A());
     }
 
     // Coerce server IDs into Record Reference
@@ -1734,32 +1839,27 @@ DS.Store = Ember.Object.extend(DS._Mappable, {
       return reference;
     }, this);
 
-    var neededReferences = this.neededReferences(references),
-        manyArray = this.createManyArray(type, Ember.A(references)),
+    var unloadedReferences = this.unloadedReferences(references),
+        manyArray = this.recordArrayManager.createManyArray(type, Ember.A(references)),
         loadingRecordArrays = this.loadingRecordArrays,
         reference, clientId, i, l;
 
     // Start the decrementing counter on the ManyArray at the number of
     // records we need to load from the adapter
-    manyArray.loadingRecordsCount(neededReferences.length);
+    manyArray.loadingRecordsCount(unloadedReferences.length);
 
-    if (neededReferences.length) {
-      for (i=0, l=neededReferences.length; i<l; i++) {
-        reference = neededReferences[i];
-        clientId = reference.clientId;
+    if (unloadedReferences.length) {
+      for (i=0, l=unloadedReferences.length; i<l; i++) {
+        reference = unloadedReferences[i];
 
         // keep track of the record arrays that a given loading record
         // is part of. This way, if the same record is in multiple
         // ManyArrays, all of their loading records counters will be
         // decremented when the adapter provides the data.
-        if (loadingRecordArrays[clientId]) {
-          loadingRecordArrays[clientId].push(manyArray);
-        } else {
-          this.loadingRecordArrays[clientId] = [ manyArray ];
-        }
+        this.recordArrayManager.registerWaitingRecordArray(manyArray, reference);
       }
 
-      this.fetchMany(neededReferences, record);
+      this.fetchMany(unloadedReferences, record);
     } else {
       // all requested records are available
       manyArray.set('isLoaded', true);
@@ -1863,8 +1963,14 @@ DS.Store = Ember.Object.extend(DS._Mappable, {
 
     if (findAllCache) { return findAllCache; }
 
-    var array = DS.RecordArray.create({ type: type, content: Ember.A([]), store: this, isLoaded: true });
-    this.registerRecordArray(array, type);
+    var array = DS.RecordArray.create({
+      type: type,
+      content: Ember.A([]),
+      store: this,
+      isLoaded: true
+    });
+
+    this.recordArrayManager.registerFilteredRecordArray(array, type);
 
     typeMap.findAllCache = array;
     return array;
@@ -1907,9 +2013,15 @@ DS.Store = Ember.Object.extend(DS._Mappable, {
       filter = query;
     }
 
-    var array = DS.FilteredRecordArray.create({ type: type, content: Ember.A([]), store: this, filterFunction: filter });
+    var array = DS.FilteredRecordArray.create({
+      type: type,
+      content: Ember.A([]),
+      store: this,
+      manager: this.recordArrayManager,
+      filterFunction: filter
+    });
 
-    this.registerRecordArray(array, type, filter);
+    this.recordArrayManager.registerFilteredRecordArray(array, type, filter);
 
     return array;
   },
@@ -1924,7 +2036,8 @@ DS.Store = Ember.Object.extend(DS._Mappable, {
     @return {boolean}
   */
   recordIsLoaded: function(type, id) {
-    return !Ember.isNone(this.typeMapFor(type).idToCid[id]);
+    if (!this.hasReferenceForId(type, id)) { return false; }
+    return typeof this.referenceForId(type, id).data === 'object';
   },
 
   // ............
@@ -1957,12 +2070,8 @@ DS.Store = Ember.Object.extend(DS._Mappable, {
 
     if (get(record, 'isDeleted')) { return; }
 
-    var cidToData = this.clientIdToData,
-        clientId = reference.clientId,
-        data = cidToData[clientId];
-
-    if (typeof data === "object") {
-      this.updateRecordArrays(type, clientId);
+    if (typeof reference.data === "object") {
+      this.recordArrayManager.referenceDidChange(reference);
     }
   },
 
@@ -1971,38 +2080,29 @@ DS.Store = Ember.Object.extend(DS._Mappable, {
   // .................
 
   scheduleSave: function(record) {
-    this._recordsToSave.add(record);
-    Ember.run.once(this, 'flushSavedRecords');
+    get(this, 'currentTransaction').add(record);
+    once(this, 'flushSavedRecords');
   },
 
   flushSavedRecords: function() {
-    var created = Ember.OrderedSet.create();
-    var updated = Ember.OrderedSet.create();
-    var deleted = Ember.OrderedSet.create();
-
-    this._recordsToSave.forEach(function(record) {
-      if (get(record, 'isNew')) {
-        created.add(record);
-      } else if (get(record, 'isDeleted')) {
-        deleted.add(record);
-      } else {
-        updated.add(record);
-      }
-      record.send('willCommit');
-    });
-
-    this._recordsToSave.clear();
-
-    get(this, '_adapter').commit(this, {
-      created: created,
-      updated: updated,
-      deleted: deleted
-    });
+    get(this, 'currentTransaction').commit();
+    set(this, 'currentTransaction', this.transaction());
   },
 
   // ..............
   // . PERSISTING .
   // ..............
+
+  /**
+    This method schedule a save of records in the default transaction.
+
+    Calling this method is essentially a request to persist
+    any changes to records that were not explicitly added to
+    a transaction.
+  */
+  save: function() {
+    once(this, 'commit');
+  },
 
   /**
     This method delegates committing to the store's implicit
@@ -2228,7 +2328,9 @@ DS.Store = Ember.Object.extend(DS._Mappable, {
     @param {DS.Model} relationshipName
   */
   didUpdateRelationship: function(record, relationshipName) {
-    var relationship = this.relationshipChangeFor(get(record, 'clientId'), relationshipName);
+    var clientId = get(record, 'reference').clientId;
+
+    var relationship = this.relationshipChangeFor(clientId, relationshipName);
     //TODO(Igor)
     if (relationship) { relationship.adapterDidUpdate(); }
   },
@@ -2242,7 +2344,7 @@ DS.Store = Ember.Object.extend(DS._Mappable, {
     `didUpdateRelationship` API.
   */
   didUpdateRelationships: function(record) {
-    var changes = this.relationshipChangesFor(get(record, '_reference'));
+    var changes = this.relationshipChangesFor(get(record, 'reference'));
 
     for (var name in changes) {
       if (!changes.hasOwnProperty(name)) { continue; }
@@ -2293,11 +2395,7 @@ DS.Store = Ember.Object.extend(DS._Mappable, {
     @param {Object} data
   */
   updateRecordData: function(record, data) {
-    var clientId = get(record, 'clientId'),
-        cidToData = this.clientIdToData;
-
-    cidToData[clientId] = data;
-
+    get(record, 'reference').data = data;
     record.didChangeData();
   },
 
@@ -2312,17 +2410,16 @@ DS.Store = Ember.Object.extend(DS._Mappable, {
     @param {Object} data
   */
   updateId: function(record, data) {
-    var typeMap = this.typeMapFor(record.constructor),
-        clientId = get(record, 'clientId'),
+    var type = record.constructor,
+        typeMap = this.typeMapFor(type),
+        reference = get(record, 'reference'),
         oldId = get(record, 'id'),
-        type = record.constructor,
         id = this.preprocessData(type, data);
 
     Ember.assert("An adapter cannot assign a new id to a record that already has an id. " + record + " had id: " + oldId + " and you tried to update it with " + id + ". This likely happened because your server returned data in response to a find or update that had a different id than the one you sent.", oldId === null || id === oldId);
 
-    typeMap.idToCid[id] = clientId;
-    this.clientIdToId[clientId] = id;
-    this.referenceForClientId(clientId).id = id;
+    typeMap.idToReference[id] = reference;
+    reference.id = id;
   },
 
   /**
@@ -2342,265 +2439,27 @@ DS.Store = Ember.Object.extend(DS._Mappable, {
     return this.adapterForType(type).extractId(type, data);
   },
 
-  // .................
-  // . RECORD ARRAYS .
-  // .................
-
-  /**
-    @private
-
-    Register a RecordArray for a given type to be backed by
-    a filter function. This will cause the array to update
-    automatically when records of that type change attribute
-    values or states.
-
-    @param {DS.RecordArray} array
-    @param {Class} type
-    @param {Function} filter
-  */
-  registerRecordArray: function(array, type, filter) {
-    var recordArrays = this.typeMapFor(type).recordArrays;
-
-    recordArrays.push(array);
-
-    this.updateRecordArrayFilter(array, type, filter);
-  },
-
-  /**
-    @private
-
-    Create a `DS.ManyArray` for a type and list of clientIds
-    and index the `ManyArray` under each clientId. This allows
-    us to efficiently remove records from `ManyArray`s when
-    they are deleted.
-
-    @param {Class} type
-    @param {Array} clientIds
-
-    @return {DS.ManyArray}
-  */
-  createManyArray: function(type, clientIds) {
-    var array = DS.ManyArray.create({ type: type, content: clientIds, store: this });
-
-    clientIds.forEach(function(clientId) {
-      var recordArrays = this.recordArraysForClientId(clientId);
-      recordArrays.add(array);
-    }, this);
-
-    return array;
-  },
-
-  /**
-    @private
-
-    This method is invoked if the `filterFunction` property is
-    changed on a `DS.FilteredRecordArray`.
-
-    It essentially re-runs the filter from scratch. This same
-    method is invoked when the filter is created in th first place.
-  */
-  updateRecordArrayFilter: function(array, type, filter) {
-    var typeMap = this.typeMapFor(type),
-        cidToData = this.clientIdToData,
-        clientIds = typeMap.clientIds,
-        clientId, data, shouldFilter, record;
-
-    for (var i=0, l=clientIds.length; i<l; i++) {
-      clientId = clientIds[i];
-      shouldFilter = false;
-
-      data = cidToData[clientId];
-
-      if (typeof data === 'object') {
-        if (record = this.recordCache[clientId]) {
-          if (!get(record, 'isDeleted')) { shouldFilter = true; }
-        } else {
-          shouldFilter = true;
-        }
-
-        if (shouldFilter) {
-          this.updateRecordArray(array, filter, type, clientId);
-        }
-      }
-    }
-  },
-
-  updateRecordArraysLater: function(type, clientId) {
-    Ember.run.once(this, function() {
-      this.updateRecordArrays(type, clientId);
-    });
-  },
-
-  /**
-    @private
-
-    This method is invoked whenever data is loaded into the store
-    by the adapter or updated by the adapter, or when an attribute
-    changes on a record.
-
-    It updates all filters that a record belongs to.
-
-    To avoid thrashing, it only runs once per run loop per record.
-
-    @param {Class} type
-    @param {Number|String} clientId
-  */
-  updateRecordArrays: function(type, clientId) {
-    var recordArrays = this.typeMapFor(type).recordArrays,
-        filter;
-
-    recordArrays.forEach(function(array) {
-      filter = get(array, 'filterFunction');
-      this.updateRecordArray(array, filter, type, clientId);
-    }, this);
-
-    // loop through all manyArrays containing an unloaded copy of this
-    // clientId and notify them that the record was loaded.
-    var manyArrays = this.loadingRecordArrays[clientId];
-
-    if (manyArrays) {
-      for (var i=0, l=manyArrays.length; i<l; i++) {
-        manyArrays[i].loadedRecord();
-      }
-
-      this.loadingRecordArrays[clientId] = null;
-    }
-  },
-
-  /**
-    @private
-
-    Update an individual filter.
-
-    @param {DS.FilteredRecordArray} array
-    @param {Function} filter
-    @param {Class} type
-    @param {Number|String} clientId
-  */
-  updateRecordArray: function(array, filter, type, clientId) {
-    var shouldBeInArray, record;
-
-    if (!filter) {
-      shouldBeInArray = true;
-    } else {
-      record = this.findByClientId(type, clientId);
-      shouldBeInArray = filter(record);
-    }
-
-    var recordArrays = this.recordArraysForClientId(clientId);
-    var reference = this.referenceForClientId(clientId);
-
-    if (shouldBeInArray) {
-      recordArrays.add(array);
-      array.addReference(reference);
-    } else if (!shouldBeInArray) {
-      recordArrays.remove(array);
-      array.removeReference(reference);
-    }
-  },
-
-  /**
-    @private
-
-    When a record is deleted, it is removed from all its
-    record arrays.
-
-    @param {DS.Model} record
-  */
-  removeFromRecordArrays: function(record) {
-    var reference = get(record, '_reference');
-    var recordArrays = this.recordArraysForClientId(reference.clientId);
-
-    recordArrays.forEach(function(array) {
-      array.removeReference(reference);
-    });
-  },
-
-  // ............
-  // . INDEXING .
-  // ............
-
-  /**
-    @private
-
-    Return a list of all `DS.RecordArray`s a clientId is
-    part of.
-
-    @return {Object(clientId: Ember.OrderedSet)}
-  */
-  recordArraysForClientId: function(clientId) {
-    var recordArrays = get(this, 'recordArraysByClientId');
-    var ret = recordArrays[clientId];
-
-    if (!ret) {
-      ret = recordArrays[clientId] = Ember.OrderedSet.create();
-    }
-
-    return ret;
-  },
-
-  typeMapFor: function(type) {
-    var typeMaps = get(this, 'typeMaps');
-    var guidForType = Ember.guidFor(type);
-
-    var typeMap = typeMaps[guidForType];
-
-    if (typeMap) {
-      return typeMap;
-    } else {
-      return (typeMaps[guidForType] =
-        {
-          idToCid: {},
-          clientIds: [],
-          recordArrays: [],
-          metadata: {}
-      });
-    }
-  },
-
   /** @private
-
-    For a given type and id combination, returns the client id used by the store.
-    If no client id has been assigned yet, one will be created and returned.
-
-    @param {DS.Model} type
-    @param {String|Number} id
+   Returns a map of IDs to client IDs for a given type.
   */
-  clientIdForId: function(type, id) {
-    id = coerceId(id);
+  typeMapFor: function(type) {
+    var typeMaps = get(this, 'typeMaps'),
+        guid = Ember.guidFor(type),
+        typeMap;
 
-    var clientId = this.typeMapFor(type).idToCid[id];
-    if (clientId !== undefined) { return clientId; }
+    typeMap = typeMaps[guid];
 
-    return this.pushData(UNLOADED, id, type);
-  },
+    if (typeMap) { return typeMap; }
 
-  /**
-    @private
+    typeMap = {
+      idToReference: {},
+      references: [],
+      metadata: {}
+    };
 
-    This method works exactly like `clientIdForId`, but does not
-    require looking up the `typeMap` for every `clientId` and
-    invoking a method per `clientId`.
-  */
-  clientIdsForIds: function(type, ids) {
-    var typeMap = this.typeMapFor(type),
-        idToClientIdMap = typeMap.idToCid;
+    typeMaps[guid] = typeMap;
 
-    return map(ids, function(id) {
-      id = coerceId(id);
-
-      var clientId = idToClientIdMap[id];
-      if (clientId) { return clientId; }
-      return this.pushData(UNLOADED, id, type);
-    }, this);
-  },
-
-  typeForClientId: function(clientId) {
-    return this.clientIdToType[clientId];
-  },
-
-  idForClientId: function(clientId) {
-    return this.clientIdToId[clientId];
+    return typeMap;
   },
 
   // ................
@@ -2636,30 +2495,18 @@ DS.Store = Ember.Object.extend(DS._Mappable, {
 
     id = coerceId(id);
 
-    var typeMap = this.typeMapFor(type),
-        clientId = typeMap.idToCid[id],
-        cidToPrematerialized = this.clientIdToPrematerializedData;
+    var reference = this.referenceForId(type, id);
 
-    if (clientId !== undefined) {
-      this.loadData(data, clientId, type);
-      cidToPrematerialized[clientId] = prematerialized;
-
-      var record = this.recordCache[clientId];
-      if (record) {
-        once(record, 'loadedData');
-      }
-    } else {
-      clientId = this.pushData(data, id, type);
-      cidToPrematerialized[clientId] = prematerialized;
+    if (reference.record) {
+     once(reference.record, 'loadedData');
     }
 
-    this.updateRecordArraysLater(type, clientId);
+    reference.data = data;
+    reference.prematerialized = prematerialized;
 
-    return this.referenceForClientId(clientId);
-  },
+    this.recordArrayManager.referenceDidChange(reference);
 
-  prematerialize: function(reference, prematerialized) {
-    this.clientIdToPrematerializedData[reference.clientId] = prematerialized;
+    return reference;
   },
 
   loadMany: function(type, ids, dataList) {
@@ -2697,89 +2544,75 @@ DS.Store = Ember.Object.extend(DS._Mappable, {
     }
   },
 
-  loadData: function(data, clientId, type){
-    var cidToData = this.clientIdToData;
-
-    cidToData[clientId] = data;
-  },
-
   /** @private
 
-    Stores data for the specified type and id combination and returns
-    the client id.
+    Creates a new reference for a given type & ID pair. Metadata about the
+    record can be stored in the reference without having to create a full-blown
+    DS.Model instance.
 
-    @param {Object} data
-    @param {String|Number} id
     @param {DS.Model} type
-    @returns {Number}
+    @param {String|Number} id
+    @returns {Reference}
   */
-  pushData: function(data, id, type) {
-    var typeMap = this.typeMapFor(type);
+  createReference: function(type, id) {
+    var typeMap = this.typeMapFor(type),
+        idToReference = typeMap.idToReference;
 
-    var idToClientIdMap = typeMap.idToCid,
-        clientIdToIdMap = this.clientIdToId,
-        clientIdToTypeMap = this.clientIdToType,
-        clientIds = typeMap.clientIds,
-        cidToData = this.clientIdToData,
-        clientId;
+    Ember.assert('The id ' + id + ' has already been used with another record of type ' + type.toString() + '.', !id || !idToReference[id]);
 
-    // If we load an item referenced in a relationship,
-    // it already has a clientId, but still needs to be materialized.
-    if(clientId=idToClientIdMap[id]) {
-      Ember.assert('The id ' + id + ' has already been used with another record of type ' + type.toString() + '.', !(data === CREATED && !!cidToData[clientId]));
-    } else {
-      clientId = ++this.clientIdCounter;
-      clientIds.push(clientId);
-    }
-
-    this.loadData(data, clientId, type);
-    clientIdToTypeMap[clientId] = type;
+    var reference = {
+      id: id,
+      clientId: this.clientIdCounter++,
+      type: type
+    };
 
     // if we're creating an item, this process will be done
     // later, once the object has been persisted.
     if (id) {
-      idToClientIdMap[id] = clientId;
-      clientIdToIdMap[clientId] = id;
+      idToReference[id] = reference;
     }
 
-    return clientId;
+    typeMap.references.push(reference);
+
+    return reference;
   },
 
   // ..........................
   // . RECORD MATERIALIZATION .
   // ..........................
 
-  materializeRecord: function(type, clientId, id) {
-    var record;
-
-    this.recordCache[clientId] = record = type._create({
+  materializeRecord: function(reference) {
+    var record = reference.type._create({
+      id: reference.id,
       store: this,
-      clientId: clientId
+      reference: reference
     });
 
-    set(record, 'id', id);
+    reference.record = record;
 
     get(this, 'defaultTransaction').adoptRecord(record);
 
     record.loadingData();
+
+    if (typeof reference.data === 'object') {
+      record.loadedData();
+    }
+
     return record;
   },
 
   dematerializeRecord: function(record) {
-    var id = get(record, 'id'),
-        clientId = get(record, 'clientId'),
-        type = this.typeForClientId(clientId),
+    var reference = get(record, 'reference'),
+        type = reference.type,
+        id = reference.id,
         typeMap = this.typeMapFor(type);
 
     record.updateRecordArrays();
 
-    delete this.recordCache[clientId];
-    delete this.clientIdToId[clientId];
-    delete this.clientIdToType[clientId];
-    delete this.clientIdToData[clientId];
-    delete this.recordArraysByClientId[clientId];
+    if (id) { delete typeMap.idToReference[id]; }
 
-    if (id) { delete typeMap.idToCid[id]; }
+    var loc = typeMap.references.indexOf(reference);
+    typeMap.references.splice(loc, 1);
   },
 
   willDestroy: function() {
@@ -2890,7 +2723,7 @@ DS.Store = Ember.Object.extend(DS._Mappable, {
   // ..............................
 
   recordAttributeDidChange: function(reference, attributeName, newValue, oldValue) {
-    var record = this.recordForReference(reference),
+    var record = reference.record,
         dirtySet = new Ember.OrderedSet(),
         adapter = this.adapterForType(record.constructor);
 
@@ -3225,15 +3058,6 @@ var DirtyState = DS.State.extend({
   // This means that there are local pending changes, but they
   // have not yet begun to be saved, and are not invalid.
   uncommitted: DS.State.extend({
-    // TRANSITIONS
-    enter: function(manager) {
-      var dirtyType = get(this, 'dirtyType'),
-          record = get(manager, 'record');
-
-      record.withTransaction(function (t) {
-        t.recordBecameDirty(dirtyType, record);
-      });
-    },
 
     // EVENTS
     willSetProperty: willSetProperty,
@@ -3246,24 +3070,15 @@ var DirtyState = DS.State.extend({
     },
 
     becameClean: function(manager) {
-      var record = get(manager, 'record'),
-          dirtyType = get(this, 'dirtyType');
+      var record = get(manager, 'record');
 
       record.withTransaction(function(t) {
-        t.recordBecameClean(dirtyType, record);
+        t.remove(record);
       });
-
       manager.transitionTo('loaded.materializing');
     },
 
     becameInvalid: function(manager) {
-      var dirtyType = get(this, 'dirtyType'),
-          record = get(manager, 'record');
-
-      record.withTransaction(function (t) {
-        t.recordBecameInFlight(dirtyType, record);
-      });
-
       manager.transitionTo('invalid');
     },
 
@@ -3281,14 +3096,9 @@ var DirtyState = DS.State.extend({
 
     // TRANSITIONS
     enter: function(manager) {
-      var dirtyType = get(this, 'dirtyType'),
-          record = get(manager, 'record');
+      var record = get(manager, 'record');
 
       record.becameInFlight();
-
-      record.withTransaction(function (t) {
-        t.recordBecameInFlight(dirtyType, record);
-      });
     },
 
     // EVENTS
@@ -3297,7 +3107,7 @@ var DirtyState = DS.State.extend({
           record = get(manager, 'record');
 
       record.withTransaction(function(t) {
-        t.recordBecameClean('inflight', record);
+        t.remove(record);
       });
 
       manager.transitionTo('saved');
@@ -3327,12 +3137,12 @@ var DirtyState = DS.State.extend({
     isValid: false,
 
     exit: function(manager) {
-      var record = get(manager, 'record');
-
-      record.withTransaction(function (t) {
-        t.recordBecameClean('inflight', record);
-      });
-    },
+       var record = get(manager, 'record');
+ 
+       record.withTransaction(function (t) {
+         t.remove(record);
+       });
+     },
 
     // EVENTS
     deleteRecord: function(manager) {
@@ -3393,10 +3203,6 @@ createdState.states.uncommitted.reopen({
   deleteRecord: function(manager) {
     var record = get(manager, 'record');
 
-    record.withTransaction(function(t) {
-      t.recordIsMoving('created', record);
-    });
-
     record.clearRelationships();
     manager.transitionTo('deleted.saved');
   }
@@ -3413,12 +3219,8 @@ updatedState.states.uncommitted.reopen({
   deleteRecord: function(manager) {
     var record = get(manager, 'record');
 
-    record.withTransaction(function(t) {
-      t.recordIsMoving('updated', record);
-    });
-
     manager.transitionTo('deleted');
-    get(manager, 'record').clearRelationships();
+    record.clearRelationships();
   }
 });
 
@@ -3567,9 +3369,6 @@ var states = {
           // clear relationships before moving to deleted state
           // otherwise it fails
           record.clearRelationships();
-          record.withTransaction(function(t) {
-            t.recordIsMoving('updated', record);
-          });
           manager.transitionTo('deleted.saved');
         },
 
@@ -3609,7 +3408,7 @@ var states = {
         var record = get(manager, 'record'),
             store = get(record, 'store');
 
-        store.removeFromRecordArrays(record);
+        store.recordArrayManager.remove(record);
       },
 
       // SUBSTATES
@@ -3618,14 +3417,6 @@ var states = {
       // state. It will exit this state when the record's
       // transaction starts to commit.
       uncommitted: DS.State.create({
-        // TRANSITIONS
-        enter: function(manager) {
-          var record = get(manager, 'record');
-
-          record.withTransaction(function(t) {
-            t.recordBecameDirty('deleted', record);
-          });
-        },
 
         // EVENTS
         willCommit: function(manager) {
@@ -3642,9 +3433,8 @@ var states = {
           var record = get(manager, 'record');
 
           record.withTransaction(function(t) {
-            t.recordBecameClean('deleted', record);
+            t.remove(record);
           });
-
           manager.transitionTo('loaded.materializing');
         }
       }),
@@ -3662,10 +3452,6 @@ var states = {
           var record = get(manager, 'record');
 
           record.becameInFlight();
-
-          record.withTransaction(function (t) {
-            t.recordBecameInFlight('deleted', record);
-          });
         },
 
         // EVENTS
@@ -3673,9 +3459,9 @@ var states = {
           var record = get(manager, 'record');
 
           record.withTransaction(function(t) {
-            t.recordBecameClean('inflight', record);
+            t.remove(record);
           });
-
+      
           manager.transitionTo('saved');
 
           manager.send('invokeLifecycleCallbacks');
@@ -3773,6 +3559,7 @@ DS.Model = Ember.Object.extend(Ember.Evented, LoadPromise, {
   isError: retrieveFromCurrentState,
   isNew: retrieveFromCurrentState,
   isValid: retrieveFromCurrentState,
+  dirtyType: retrieveFromCurrentState,
 
   clientId: null,
   id: null,
@@ -3956,7 +3743,7 @@ DS.Model = Ember.Object.extend(Ember.Evented, LoadPromise, {
   updateRecordArrays: function() {
     var store = get(this, 'store');
     if (store) {
-      store.dataWasUpdated(this.constructor, get(this, '_reference'), this);
+      store.dataWasUpdated(this.constructor, get(this, 'reference'), this);
     }
   },
 
@@ -3982,18 +3769,19 @@ DS.Model = Ember.Object.extend(Ember.Evented, LoadPromise, {
   },
 
   dataDidChange: Ember.observer(function() {
+    this.reloadHasManys();
+    this.send('finishedMaterializing');
+  }, 'data'),
+
+  reloadHasManys: function() {
     var relationships = get(this.constructor, 'relationshipsByName');
-
     this.updateRecordArraysLater();
-
     relationships.forEach(function(name, relationship) {
       if (relationship.kind === 'hasMany') {
         this.hasManyDidChange(relationship.key);
       }
     }, this);
-
-    this.send('finishedMaterializing');
-  }, 'data'),
+  },
 
   hasManyDidChange: function(key) {
     var cachedValue = this.cacheFor(key);
@@ -4154,10 +3942,6 @@ DS.Model = Ember.Object.extend(Ember.Evented, LoadPromise, {
     this.updateRecordArraysLater();
   },
 
-  _reference: Ember.computed(function() {
-    return get(this, 'store').referenceForClientId(get(this, 'clientId'));
-  }),
-
   adapterDidInvalidate: function(errors) {
     this.send('becameInvalid', errors);
   },
@@ -4309,7 +4093,7 @@ DS.Model.reopen({
   },
 
   attributeWillChange: Ember.beforeObserver(function(record, key) {
-    var reference = get(record, '_reference'),
+    var reference = get(record, 'reference'),
         store = get(record, 'store');
 
     record.send('willSetProperty', { reference: reference, store: store, name: key });
@@ -4421,10 +4205,10 @@ DS.Model.reopen({
     if (get(record, 'isLoaded')) {
       var oldParent = get(record, key);
 
-      var childReference = get(record, '_reference'),
+      var childReference = get(record, 'reference'),
           store = get(record, 'store');
       if (oldParent){
-        var change = DS.RelationshipChange.createChange(childReference, get(oldParent, '_reference'), store, { key: key, kind:"belongsTo", changeType: "remove" });
+        var change = DS.RelationshipChange.createChange(childReference, get(oldParent, 'reference'), store, { key: key, kind:"belongsTo", changeType: "remove" });
         change.sync();
         this._changesToSync[key] = change;
       }
@@ -4436,9 +4220,9 @@ DS.Model.reopen({
     if (get(record, 'isLoaded')) {
       var newParent = get(record, key);
       if(newParent){
-        var childReference = get(record, '_reference'),
+        var childReference = get(record, 'reference'),
             store = get(record, 'store');
-        var change = DS.RelationshipChange.createChange(childReference, get(newParent, '_reference'), store, { key: key, kind:"belongsTo", changeType: "add" });
+        var change = DS.RelationshipChange.createChange(childReference, get(newParent, 'reference'), store, { key: key, kind:"belongsTo", changeType: "add" });
         change.sync();
         if(this._changesToSync[key]){
           DS.OneToManyChange.ensureSameTransaction([change, this._changesToSync[key]], store);
@@ -4501,9 +4285,7 @@ function clearUnmaterializedHasMany(record, relationship) {
   forEach.call(references, function(reference) {
     var childRecord;
 
-    if (store.isReferenceMaterialized(reference)) {
-      childRecord = store.recordForReference(reference);
-
+    if (childRecord = reference.record) {
       record.suspendRelationshipObservers(function() {
         set(childRecord, inverseName, null);
       });
@@ -5141,7 +4923,7 @@ DS.OneToOneChange.maintainInvariant = function(options, store, childReference, k
     var child = store.recordForReference(childReference);
     var oldParent = get(child, key);
     if (oldParent){
-      var correspondingChange = DS.OneToOneChange.createChange(childReference, oldParent.get('_reference'), store, {
+      var correspondingChange = DS.OneToOneChange.createChange(childReference, oldParent.get('reference'), store, {
           parentType: options.parentType,
           hasManyName: options.hasManyName,
           changeType: "remove",
@@ -5190,11 +4972,12 @@ DS.OneToManyChange.createChange = function(childReference, parentReference, stor
 
 
 DS.OneToManyChange.maintainInvariant = function(options, store, childReference, key){
-  if (options.changeType === "add" && store.recordIsMaterialized(childReference)) {
-    var child = store.recordForReference(childReference);
+  var child = childReference.record;
+
+  if (options.changeType === "add" && child) {
     var oldParent = get(child, key);
     if (oldParent){
-      var correspondingChange = DS.OneToManyChange.createChange(childReference, oldParent.get('_reference'), store, {
+      var correspondingChange = DS.OneToManyChange.createChange(childReference, oldParent.get('reference'), store, {
           parentType: options.parentType,
           hasManyName: options.hasManyName,
           changeType: "remove",
@@ -5206,13 +4989,14 @@ DS.OneToManyChange.maintainInvariant = function(options, store, childReference, 
   }
 };
 
-DS.OneToManyChange.ensureSameTransaction = function(changes, store){
+DS.OneToManyChange.ensureSameTransaction = function(changes){
   var records = Ember.A();
   forEach(changes, function(change){
     records.addObject(change.getSecondRecord());
     records.addObject(change.getFirstRecord());
   });
-  var transaction = store.ensureSameTransaction(records);
+
+  var transaction = DS.Transaction.ensureSameTransaction(records);
   forEach(changes, function(change){
     change.transaction = transaction;
  });
@@ -5267,8 +5051,8 @@ DS.RelationshipChange.prototype = {
     // return null or undefined if the original reference was null or undefined
     if (!reference) { return reference; }
 
-    if (store.recordIsMaterialized(reference)) {
-      return store.recordForReference(reference);
+    if (reference.record) {
+      return reference.record;
     }
   },
 
@@ -5293,7 +5077,7 @@ DS.RelationshipChange.prototype = {
     var child = this.getFirstRecord(),
       parentRecord = this.getSecondRecord();
 
-    var transaction = this.store.ensureSameTransaction([child, parentRecord]);
+    var transaction = DS.Transaction.ensureSameTransaction([child, parentRecord]);
 
     this.transaction = transaction;
     return transaction;
@@ -5374,7 +5158,7 @@ DS.RelationshipChangeAdd.prototype.sync = function() {
         set(firstRecord, firstRecordName, secondRecord);
       });
     }
-    else if(this.firstdRecordKind === "hasMany"){
+    else if(this.firstRecordKind === "hasMany"){
       firstRecord.suspendRelationshipObservers(function(){
         get(firstRecord, firstRecordName).addObject(secondRecord);
       });
@@ -5418,7 +5202,7 @@ DS.RelationshipChangeRemove.prototype.sync = function() {
         set(firstRecord, firstRecordName, null);
       });
      }
-     else if(this.firstdRecordKind === "hasMany"){
+     else if(this.firstRecordKind === "hasMany"){
        firstRecord.suspendRelationshipObservers(function(){
         get(firstRecord, firstRecordName).removeObject(secondRecord);
       });
@@ -7384,7 +7168,7 @@ function loaderFor(store) {
     },
 
     prematerialize: function(reference, prematerialized) {
-      store.prematerialize(reference, prematerialized);
+      reference.prematerialized = prematerialized;
     },
 
     metaForType: function(type, property, data) {
@@ -7852,12 +7636,20 @@ DS.Adapter = Ember.Object.extend(DS._Mappable, {
   */
   registerSerializerTransforms: function(klass, serializer, seen) {
     var transforms = klass._registeredTransforms, superclass, prop;
+    var enumTransforms = klass._registeredEnumTransforms;
 
     for (prop in transforms) {
       if (!transforms.hasOwnProperty(prop) || prop in seen) { continue; }
       seen[prop] = true;
 
       serializer.registerTransform(prop, transforms[prop]);
+    }
+
+    for (prop in enumTransforms) {
+      if (!enumTransforms.hasOwnProperty(prop) || prop in seen) { continue; }
+      seen[prop] = true;
+
+      serializer.registerEnumTransform(prop, enumTransforms[prop]);
     }
 
     if (superclass = klass.superclass) {
@@ -8064,6 +7856,14 @@ DS.Adapter.reopenClass({
     registeredTransforms[attributeType] = transform;
 
     this._registeredTransforms = registeredTransforms;
+  },
+
+  registerEnumTransform: function(attributeType, objects) {
+    var registeredEnumTransforms = this._registeredEnumTransforms || {};
+
+    registeredEnumTransforms[attributeType] = objects;
+
+    this._registeredEnumTransforms = registeredEnumTransforms;
   },
 
   map: DS._Mappable.generateMapFunctionFor('attributes', function(key, newValue, map) {
@@ -8576,7 +8376,7 @@ DS.RESTAdapter = DS.Adapter.extend({
   },
 
   shouldSave: function(record) {
-    var reference = get(record, '_reference');
+    var reference = get(record, 'reference');
 
     return !reference.parent;
   },
@@ -8603,7 +8403,7 @@ DS.RESTAdapter = DS.Adapter.extend({
       this._dirtyTree(dirtySet, embeddedRecord);
     }, this);
 
-    var reference = record.get('_reference');
+    var reference = record.get('reference');
 
     if (reference.parent) {
       var store = get(record, 'store');
@@ -9043,8 +8843,7 @@ function hasManyProcessorFactory(store, record, relationship) {
 
 function SavedObjectProcessor(json, record, store) {
   this.record = record;
-  this.type = record.constructor;
-  ObjectProcessor.call(this, json, this.type, store);
+  ObjectProcessor.call(this, json, record.constructor, store);
   if (!json) { this.done(); }
 }
 
