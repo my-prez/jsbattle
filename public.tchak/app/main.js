@@ -32,8 +32,8 @@ App.IndexRoute = Ember.Route.extend({
       var players = this.controllerFor('index').get('selectedPlayers');
 
       App.Fight.createRecord({
-        opponentOne: players.objectAt(0),
-        opponentTwo: players.objectAt(1)
+        opponentOne: players.objectAt(0).toHash(),
+        opponentTwo: players.objectAt(1).toHash()
       }).save();
     }
   }
@@ -49,7 +49,9 @@ App.IndexController = Ember.Controller.extend({
   }.property('players.@each.isReady'),
 
   fights: function() {
-    return App.Fight.find();
+    return App.Fight.filter({}, function(fight) {
+      return !fight.get('isDeleted');
+    });
   }.property(),
 
   readyToFight: Em.computed.gte('selectedPlayers.length', 2)
