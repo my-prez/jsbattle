@@ -1,83 +1,58 @@
-App.Adapter = DS.BasicAdapter.extend({
-  findAll: function(store, type) {
-    this.findQuery(store, type, {}, {load: function() {}});
+App.Adapter = DS.RESTAdapter.extend({
+  serializer: DS.JSONSerializer,
+
+  didFindRecord: function(store, type, json, id) {
+    var root = this.rootForType(type);
+    var data = {};
+    data[root] = json;
+    this._super(store, type, data, id);
+  },
+  didFindAll: function(store, type, json) {
+    var root = this.pluralize(this.rootForType(type));
+    var data = {};
+    data[root] = json;
+    this._super(store, type, data);
+  },
+  didFindQuery: function(store, type, json, array) {
+    var root = this.pluralize(this.rootForType(type));
+    var data = {};
+    data[root] = json;
+    this._super(store, type, data, array);
   },
 
-  dirtyRecordsForRecordChange: function(dirtySet, record) {
-    this._super(dirtySet, record);
+  didCreateRecord: function(store, type, record, json) {
+    var root = this.rootForType(type);
+    var data = {};
+    data[root] = json;
+    this._super(store, type, record, data);
+  },
 
-    if (record instanceof App.Player) {
-      record.get('fights').forEach(function(fight) {
-        dirtySet.add(fight);
-      });
-    }
+  didUpdateRecord: function(store, type, record) {
+    this._super(store, type, record);
+  },
+
+  didDeleteRecord: function(store, type, record) {
+    this._super(store, type, record);
+  },
+
+  ajax: function(url, method, hash) {
+    if (hash.data && hash.data.player) { hash.data = hash.data.player; }
+    if (hash.data && hash.data.fight) { hash.data = hash.data.fight; }
+    this._super(url, method, hash);
   }
 });
 
-App.Adapter.map('App.Fight', {
-  opponentOne: { embedded: 'always' },
-  opponentTwo: { embedded: 'always' }
-});
+App.Adapter.registerTransform('hash', {
+  deserialize: function(serialized) {
+    return serialized;
+  },
 
-DS.Model.reopen({
-  toJSON: function(options) {
-    return this.serialize(options);
+  serialize: function(object) {
+    return object;
   }
 });
 
 App.Store = DS.Store.extend({
   revision: 12,
   adapter: App.Adapter
-});
-
-App.Sync = Ember.Object.extend({
-  url: null,
-  buildUrl: function(id) {
-    return ['', this.url, id].compact().join('/');
-  },
-  find: function(id, process) {
-    var url = this.buildUrl(id);
-
-    $.getJSON(url, function(data) {
-      process(data).load();
-    });
-  },
-  query: function(query, process) {
-    var url = this.buildUrl();
-
-    $.getJSON(url, function(data) {
-      process(data).load();
-    });
-  },
-  createRecord: function(record, process) {
-    var url = this.buildUrl();
-
-    process(record).save(function(data, process) {
-      $.ajax(url, {
-        method: 'POST',
-        data: JSON.stringify(data),
-        success: function(data) {
-          process(data).done();
-        }
-      });
-    });
-  },
-  updateRecord: function(record, process) {
-    var url = this.buildUrl(record.get('id'));
-
-    process(record).save(function(data, done) {
-      $.ajax(url, {
-        method: 'PUT',
-        data: JSON.stringify(data),
-        success: function() { done(); }
-      });
-    });
-  },
-  deleteRecord: function(record, process) {
-    var url = this.buildUrl(record.get('id'));
-
-    process(record).save(function(data, done) {
-      $.ajax(url, {method: 'DELETE'}).then(function() { done(); });
-    });
-  }
 });

@@ -19,16 +19,15 @@ App.Player = DS.Model.extend({
     });
   }.property(),
 
-  save: function() {
-    this.get('fights').invoke('save');
-    this._super();
+  toHash: function() {
+    return this.getProperties('firstName', 'lastName', 'twitter', 'framework');
   }
 });
 
 App.Fight = DS.Model.extend({
-  opponentOne:        DS.belongsTo('App.Player'),
+  opponentOne:        DS.attr('hash'),
   opponentOneScore:   DS.attr('number', {defaultValue: 0}),
-  opponentTwo:        DS.belongsTo('App.Player'),
+  opponentTwo:        DS.attr('hash'),
   opponentTwoScore:   DS.attr('number', {defaultValue: 0}),
 
   buildOpponent: function(name) {
@@ -48,40 +47,4 @@ App.Fight = DS.Model.extend({
     return this.buildOpponent('Two')
       .create({fight: this});
   }.property()
-});
-
-App.loadFight = function(process, data) {
-  return process(data).munge(function(data, process) {
-    process(data.opponentOne, App.Player).load();
-    process(data.opponentTwo, App.Player).load();
-    data.opponentOne = data.opponentOne.id;
-    data.opponentTwo = data.opponentTwo.id;
-  });
-};
-
-App.Player.sync = App.Sync.create({
-  url: 'players'
-});
-App.Fight.sync = App.Sync.create({
-  url: 'fights',
-  query: function(query, process) {
-    var url = this.buildUrl();
-
-    $.getJSON(url, function(data) {
-      App.loadFight(process, data).load();
-    });
-  },
-  createRecord: function(record, process) {
-    var url = this.buildUrl();
-
-    process(record).save(function(data, process) {
-      $.ajax(url, {
-        method: 'POST',
-        data: JSON.stringify(data),
-        success: function(data) {
-          App.loadFight(process, data).done();
-        }
-      });
-    });
-  }
 });
