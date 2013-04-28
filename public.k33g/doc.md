@@ -26,3 +26,35 @@ je mets le code de mon application Backbone dans un objet global
 
 - "Classes" & objets : Pascal Case
 - instances : CamelCase
+
+
+    //TODO : twitter account vs image name
+
+    /*
+    window.k33g = new this.Models.Player({
+        firstName:"Philippe",
+        lastName:"Charrière",
+        twitter : "k33g_org",
+        framework:"Backbone",
+        picture:"k33g_org"
+
+    });
+
+    window.sebmade = new this.Models.Player({
+        firstName:"Sébastien",
+        lastName:"Letélié",
+        twitter : "sebmade",
+        framework:"Angular",
+        picture:"sebmade"
+    });
+
+    window.tchak13 = new this.Models.Player({
+        firstName:"Paul",
+        lastName:"Chavar",
+        twitter : "tchak13",
+        framework:"Ember",
+        picture:"tchak13"
+    });
+    */
+
+        //window.players = new this.Collections.Players([ sebmade, tchak13, k33g]);
