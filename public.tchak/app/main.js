@@ -44,15 +44,13 @@ App.IndexController = Ember.Controller.extend({
     return App.Player.find();
   }.property(),
 
+  fights: function() {
+    return App.Fight.find();
+  }.property(),
+
   selectedPlayers: function() {
     return this.get('players').filterProperty('isReady');
   }.property('players.@each.isReady'),
-
-  fights: function() {
-    return App.Fight.filter({}, function(fight) {
-      return !fight.get('isDeleted');
-    });
-  }.property(),
 
   readyToFight: Em.computed.gte('selectedPlayers.length', 2)
 });

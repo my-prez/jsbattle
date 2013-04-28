@@ -1,4 +1,4 @@
-// Last commit: 9a6351a (2013-04-26 17:47:40 -0700)
+// Last commit: f8cb714 (2013-04-28 07:24:47 -0700)
 
 
 (function() {
@@ -402,6 +402,8 @@ DS.RecordArrayManager = Ember.Object.extend({
         reference.loadingRecordArrays = [];
       }
     }, this);
+
+    this.changedReferences = [];
   },
 
   /**
@@ -8790,10 +8792,10 @@ DS.RESTAdapter = DS.Adapter.extend({
     hash.url = url;
     hash.type = type;
     hash.dataType = 'json';
-    hash.contentType = 'application/json; charset=utf-8';
     hash.context = this;
 
     if (hash.data && type !== 'GET') {
+      hash.contentType = 'application/json; charset=utf-8';
       hash.data = JSON.stringify(hash.data);
     }
 
