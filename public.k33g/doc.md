@@ -58,3 +58,6 @@ je mets le code de mon application Backbone dans un objet global
     */
 
         //window.players = new this.Collections.Players([ sebmade, tchak13, k33g]);
+
+
+fights.at(1).set({opponentOneScore:2,opponentTwoScore:4})

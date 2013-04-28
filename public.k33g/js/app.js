@@ -10,7 +10,6 @@ window.App = {
 
 App.Models.Player = Backbone.Model.extend({
     urlRoot:"/players"
-
 });
 
 App.Models.Fight = Backbone.Model.extend({
@@ -48,28 +47,10 @@ App.Views.Players = Backbone.View.extend({
     },
     events:{
         "click :checkbox" : function(event) {
-            /*
-             event.currentTarget.name : name of the checkbox
-             event.currentTarget.checked
-             event.currentTarget.id
-             event.currentTarget.dataset["playerid"]
-             */
-            console.log(
-                "click :checkbox --> ",
-                event.currentTarget.dataset["playerid"],
-                event.currentTarget.name,
-                event.currentTarget.checked
-            );
-
             this.addOrRemove(event.currentTarget.checked ? 1 : -1);
         },
-
         "click .btn-success" : function() {
-            console.log("click .btn-success");
-
             this.fightsView.addFight(this.selectedPlayers[0], this.selectedPlayers[1])
-
-
         }
     },
 
@@ -92,7 +73,6 @@ App.Views.Players = Backbone.View.extend({
             this.$(".alert").removeClass().addClass("alert alert-info").
                 html("<h4>Sélectionne 2 combattants pour 1 combat</h4>");
         }
-
 
         if (this.selectedPlayersCounter==2) {
 
@@ -126,9 +106,12 @@ App.Views.Fights = Backbone.View.extend({
     render : function() {
         this.$el.html(
             this.template({
-                fights:this.collection.toJSON()
+                fights:this.collection.toJSON(),
+                scores:this.computeScores()
             })
         );
+
+        this.computeScores();
     },
     addFight : function(opponent1, opponent2) {
 
@@ -139,11 +122,29 @@ App.Views.Fights = Backbone.View.extend({
 
         this.collection.add(fight);
 
-        fight.save({},{success: function(){
-
-        }});
+        fight.save({},{success: function(){}});
 
 
+    },
+    computeScores : function() {
+        var scores = {BACKBONE:0, ANGULAR:0, EMBER:0};
+
+        function computeFor(frameworkName, fight) {
+            frameworkName = frameworkName.toUpperCase();
+
+            if (fight.get("opponentOne").framework.toUpperCase() == frameworkName)
+                scores[frameworkName] += fight.get("opponentOneScore");
+            if (fight.get("opponentTwo").framework.toUpperCase() == frameworkName)
+                scores[frameworkName] += fight.get("opponentTwoScore");
+        }
+
+        this.collection.each(function(fight) {
+            computeFor("Backbone", fight);
+            computeFor("Angular", fight);
+            computeFor("Ember", fight);
+        })
+
+        return scores;
     }
 });
 
@@ -177,18 +178,15 @@ App.init = function () {
     playersView.listenTo(players, "save", playersView.render);
     playersView.listenTo(players, "destroy", playersView.render);
 
-    fightsView.listenTo(fights, "add", fightsView.render);
+    //fightsView.listenTo(fights, "add", fightsView.render);
     fightsView.listenTo(fights, "change", fightsView.render);
     fightsView.listenTo(fights, "save", fightsView.render);
     fightsView.listenTo(fights, "destroy", fightsView.render);
 
 }
 
-
-
 $(function() {
     //TODO: utiliser router pour changer les points ?
-    //TODO: afficher le total des points
 
     tools.loadTemplates(App.Templates, ['playersView', 'fightsView'], function() {
         App.init();
