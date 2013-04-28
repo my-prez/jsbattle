@@ -9,5 +9,4 @@ target/maven-status/*
 target/test-classes/*
 *.rdb
 /public.tmp.k33g/
-/public.k33g/.idea/*
 
