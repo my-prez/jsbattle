@@ -11,14 +11,6 @@ App.Player = DS.Model.extend({
     if (this.get('isDirty')) { this.save(); }
   }.observes('isReady'),
 
-  fights: function() {
-    var player = this;
-    return App.Fight.filter(function(fight) {
-      return fight.get('opponentOne') === player ||
-        fight.get('opponentTwo') === player;
-    });
-  }.property(),
-
   toHash: function() {
     return this.getProperties('firstName', 'lastName', 'twitter', 'framework');
   }

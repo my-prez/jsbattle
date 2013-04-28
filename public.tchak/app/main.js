@@ -71,7 +71,7 @@ App.OpponentController = Ember.ObjectController.extend({
 
 App.PlayerEditRoute = Ember.Route.extend({
   deactivate: function() {
-    Ember.run.next(this.player(), function() {
+    Ember.run.next(this.get('controller'), function() {
       if (!this.get('isSaving')) {
         this.get('transaction').rollback();
       }
@@ -79,20 +79,14 @@ App.PlayerEditRoute = Ember.Route.extend({
   },
   events: {
     save: function() {
-      this.player().save();
+      this.get('controller.model').save();
       this.transitionTo('index');
     }
-  },
-  player: function() {
-    return this.modelFor('player.edit');
   }
 });
 
 App.PlayerIndexRoute = App.PlayerEditRoute.extend({
   model: function() {
     return App.Player.createRecord();
-  },
-  player: function() {
-    return this.modelFor('player.index');
   }
 });
