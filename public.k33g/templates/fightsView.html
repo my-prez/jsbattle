@@ -1,0 +1,7 @@
+<ol>
+    <% _.each(fights, function(fight) { %>
+    <li id="<%= fight.id %>"> <!-- Name instead of Id : @mklabs tribute -->
+        <h3><%= fight.opponentOneId %> <%= fight.opponentTwoId %></h3>
+    </li>
+    <% }); %>
+</ol>

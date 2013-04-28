@@ -11,7 +11,7 @@ window.tools = {
         var deferreds = [];
 
         $.each(views, function(index, view) {
-
+            //Normalement, je pourrais compiler les templates ici
             deferreds.push($.get('templates/' + view + '.html', function(data) {
                 templatesPkg[view] = data;
             }));

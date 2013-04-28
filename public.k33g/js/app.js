@@ -26,9 +26,35 @@ App.Models.Fight = Backbone.Model.extend({
 
     defaults : {
         opponentOneScore : 0,
-        opponentTwoScore : 0
+        opponentTwoScore : 0,
+        opponentOneId : null,
+        opponentTwoId : null
     },
 
+    setOpponents : function (opponent1, opponent2) {
+        this.set({
+            opponentOneId : opponent1.id,
+            opponentTwoId : opponent2.id
+        }, {validate : true}); //opponents should be saved before
+    },
+
+    validate : function(attrs, options) {
+        console.log("attrs", attrs,"options", options);
+        if (attrs.opponentOneId === undefined || attrs.opponentTwoId === undefined) {
+         return "id of opponent can't be undefined";
+        }
+
+    },
+
+    initialize : function() {
+        this.on("invalid", function(model, error) {
+            console.log("Validation Error : ", error);
+        });
+    }
+
+
+
+    /*
     setOpponentOne:function(opponent){
         //var currentRound = this;
         this.set({opponentOne:opponent.toJSON()})
@@ -40,9 +66,9 @@ App.Models.Fight = Backbone.Model.extend({
         this.set({opponentTwo:opponent.toJSON()})
         opponent.on("change", function(){ this.setOpponentTwo(opponent)}, this)
     }
+    */
 
 });
-
 
 App.Collections.Players = Backbone.Collection.extend({
     url :"/players",
@@ -57,7 +83,7 @@ App.Collections.Fights = Backbone.Collection.extend({
 App.Views.Players = Backbone.View.extend({
     el : "#players",
     initialize : function() {
-        this.template = _.template(App.Templates["playersView"]);
+        this.template = _.template(App.Templates["playersView"]); //fair un dessin/workflow de ce qu'il se passe
     },
     render : function() {
 
@@ -78,12 +104,20 @@ App.Views.Players = Backbone.View.extend({
             //App.Views.Players.selectedPlayers+=addOrRemove;
         }
 		/*
-			TO DO METTRE EN MEMOIRE les joueurs sélectionnés (tableau pour pouvoir les mettre sur un ring)
+			TODO METTRE EN MEMOIRE les joueurs sélectionnés (tableau pour pouvoir les mettre sur un ring)
+
+			TODO: expliquer presque à chaque ligne ce que l'on fait
 		*/
     },
     selectedPlayers:0,
+
     addOrRemove:function(value) {
         this.selectedPlayers+=value;
+
+        //TODO : créer une liste des joueurs sélectionnés => permettra de créer le fight
+        //TODO : cette liste est une propriété de la vue
+        //TODO: cf remarque dans events
+
         console.log(this.selectedPlayers);
 
         if(this.selectedPlayers<2)
@@ -107,13 +141,15 @@ App.init = function(){
         console.log("=== APP init ===")
         Backbone.history.start();
 
+        //TODO : twitter account vs image name
 
+        /*
         window.k33g = new this.Models.Player({
             firstName:"Philippe",
             lastName:"Charrière",
-            twitter : "k33g",
+            twitter : "k33g_org",
             framework:"Backbone",
-            picture:"k33g"
+            picture:"k33g_org"
 
         });
 
@@ -132,15 +168,22 @@ App.init = function(){
             framework:"Ember",
             picture:"tchak13"
         });
+        */
 
 
 
 
-        window.players = new this.Collections.Players([ sebmade, tchak13, k33g]);
+        //window.players = new this.Collections.Players([ sebmade, tchak13, k33g]);
+
+        window.players = new this.Collections.Players();
 
         window.playersView = new this.Views.Players({collection:players})
 
-        playersView.render();
+        players.fetch({success:function(){
+            playersView.render();
+        }})
+
+
 
 
         //players.on("change",function(){playersView.render()});
@@ -155,7 +198,7 @@ App.init = function(){
 $(function() {
 
 
-    tools.loadTemplates(App.Templates, ['playersView', 'column', 'header', 'main'], function() {
+    tools.loadTemplates(App.Templates, ['playersView', 'fightsView', 'header', 'main'], function() {
         App.init();
     });
 
