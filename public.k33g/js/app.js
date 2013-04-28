@@ -1,11 +1,3 @@
-/*
-- Cinématique :
-    - ajouter joueurs : 1 état "prêt au combat" -> met le joueur dans un fight
-    - il faut sélectionner 2 joueurs pour pouvoir faire 1 combat
-    - pouvoir retirer un joueur d'un fight
-
-*/
-
 
 window.App = {
     Models: {},
@@ -26,47 +18,8 @@ App.Models.Fight = Backbone.Model.extend({
 
     defaults : {
         opponentOneScore : 0,
-        opponentTwoScore : 0,
-        opponentOneId : null,
-        opponentTwoId : null
-    },
-
-    setOpponents : function (opponent1, opponent2) {
-        this.set({
-            opponentOneId : opponent1.id,
-            opponentTwoId : opponent2.id
-        }, {validate : true}); //opponents should be saved before
-    },
-
-    validate : function(attrs, options) {
-        console.log("attrs", attrs,"options", options);
-        if (attrs.opponentOneId === undefined || attrs.opponentTwoId === undefined) {
-         return "id of opponent can't be undefined";
-        }
-
-    },
-
-    initialize : function() {
-        this.on("invalid", function(model, error) {
-            console.log("Validation Error : ", error);
-        });
+        opponentTwoScore : 0
     }
-
-
-
-    /*
-    setOpponentOne:function(opponent){
-        //var currentRound = this;
-        this.set({opponentOne:opponent.toJSON()})
-        opponent.on("change", function(){ this.setOpponentOne(opponent)}, this)
-    },
-
-    setOpponentTwo:function(opponent){
-        //var currentRound = this;
-        this.set({opponentTwo:opponent.toJSON()})
-        opponent.on("change", function(){ this.setOpponentTwo(opponent)}, this)
-    }
-    */
 
 });
 
@@ -87,118 +40,157 @@ App.Views.Players = Backbone.View.extend({
     },
     render : function() {
 
-        //var content = this.template({rubrics:this.collection.toJSON()});
-        //$(this.el).html(content);
         this.$el.html(
             this.template({
                 players:this.collection.toJSON()
             })
         );
-        //return this;
     },
     events:{
         "click :checkbox" : function(event) {
-            console.log("CLICK --> ", event.currentTarget.name, event.currentTarget.checked);
-            //console.log("CLICK --> ", event.currentTarget.name, event.currentTarget.checked, event);
-            this.addOrRemove(event.currentTarget.checked ? 1 : -1);
-            //App.Views.Players.selectedPlayers+=addOrRemove;
-        }
-		/*
-			TODO METTRE EN MEMOIRE les joueurs sélectionnés (tableau pour pouvoir les mettre sur un ring)
+            /*
+             event.currentTarget.name : name of the checkbox
+             event.currentTarget.checked
+             event.currentTarget.id
+             event.currentTarget.dataset["playerid"]
+             */
+            console.log(
+                "click :checkbox --> ",
+                event.currentTarget.dataset["playerid"],
+                event.currentTarget.name,
+                event.currentTarget.checked
+            );
 
-			TODO: expliquer presque à chaque ligne ce que l'on fait
-		*/
+            this.addOrRemove(event.currentTarget.checked ? 1 : -1);
+        },
+
+        "click .btn-success" : function() {
+            console.log("click .btn-success");
+
+            this.fightsView.addFight(this.selectedPlayers[0], this.selectedPlayers[1])
+
+
+        }
     },
-    selectedPlayers:0,
+
+    selectedPlayersCounter:0,
+    selectedPlayers: [null, null],
+
+    getSelectedPlayers : function (selectedPlayers, players) {
+        $.each(
+            $("input:checked"), function (id,opponent) {
+                selectedPlayers[id] = players.get(opponent.dataset["playerid"]);
+            }
+        )
+    },
 
     addOrRemove:function(value) {
-        this.selectedPlayers+=value;
 
-        //TODO : créer une liste des joueurs sélectionnés => permettra de créer le fight
-        //TODO : cette liste est une propriété de la vue
-        //TODO: cf remarque dans events
+        this.selectedPlayersCounter+=value;
 
-        console.log(this.selectedPlayers);
-
-        if(this.selectedPlayers<2)
+        if (this.selectedPlayersCounter<2) {
             this.$(".alert").removeClass().addClass("alert alert-info").
                 html("<h4>Sélectionne 2 combattants pour 1 combat</h4>");
+        }
 
-        if(this.selectedPlayers==2)
-            this.$(".alert").removeClass().addClass("alert alert-success").
-                html("<h4>Bravo ! 1 combat peut commencer</h4>");
 
-        if(this.selectedPlayers>2) this.$(".alert").removeClass().addClass("alert alert-error").
-            html("<h4>Hop hop hop ! On a dit un contre un !!!</h4>");
+        if (this.selectedPlayersCounter==2) {
 
+            this.getSelectedPlayers(this.selectedPlayers, this.collection);
+
+            var message = [
+                "<h4>Bravo ! 1 combat peut commencer : ",
+                "@" + this.selectedPlayers[0].get("twitter") +" vs @"+ this.selectedPlayers[1].get("twitter") + " ",
+                "<button class='btn btn-success'>FIGHT !</button></h4>"
+            ].join("")
+
+            this.$(".alert")
+                .removeClass().addClass("alert alert-success")
+                .html(message);
+        }
+
+        if (this.selectedPlayersCounter>2) {
+            this.$(".alert").removeClass().addClass("alert alert-error").
+                html("<h4>Hop hop hop ! On a dit un contre un !!!</h4>");
+        }
     }
 
 });
 
 
-App.init = function(){
-        //App.router = new App.Routers.main();
-        console.log("=== APP init ===")
-        Backbone.history.start();
+App.Views.Fights = Backbone.View.extend({
+    el : "#fights",
+    initialize : function() {
+        this.template = _.template(App.Templates["fightsView"]);
+    },
+    render : function() {
+        this.$el.html(
+            this.template({
+                fights:this.collection.toJSON()
+            })
+        );
+    },
+    addFight : function(opponent1, opponent2) {
 
-        //TODO : twitter account vs image name
-
-        /*
-        window.k33g = new this.Models.Player({
-            firstName:"Philippe",
-            lastName:"Charrière",
-            twitter : "k33g_org",
-            framework:"Backbone",
-            picture:"k33g_org"
-
+        var fight = new App.Models.Fight({
+            opponentOne : opponent1,
+            opponentTwo : opponent2
         });
 
-        window.sebmade = new this.Models.Player({
-            firstName:"Sébastien",
-            lastName:"Letélié",
-            twitter : "sebmade",
-            framework:"Angular",
-            picture:"sebmade"
-        });
+        this.collection.add(fight);
 
-        window.tchak13 = new this.Models.Player({
-            firstName:"Paul",
-            lastName:"Chavar",
-            twitter : "tchak13",
-            framework:"Ember",
-            picture:"tchak13"
-        });
-        */
+        fight.save({},{success: function(){
 
+        }});
 
-
-
-        //window.players = new this.Collections.Players([ sebmade, tchak13, k33g]);
-
-        window.players = new this.Collections.Players();
-
-        window.playersView = new this.Views.Players({collection:players})
-
-        players.fetch({success:function(){
-            playersView.render();
-        }})
-
-
-
-
-        //players.on("change",function(){playersView.render()});
-		
-		playersView.listenTo(players, "change", playersView.render)
-		
 
     }
+});
+
+
+
+App.init = function () {
+
+    //App.router = new App.Routers.main();
+    console.log("=== APP init ===")
+    Backbone.history.start();
+
+    window.players = new this.Collections.Players();
+    window.fights = new this.Collections.Fights();
+
+    window.playersView = new this.Views.Players({collection:players})
+
+    window.fightsView = new this.Views.Fights({collection:fights})
+
+    playersView.fightsView = fightsView;
+
+    players.fetch({success:function(){
+        playersView.render();
+    }})
+
+    fights.fetch({success:function(){
+        fightsView.render();
+    }})
+
+
+    playersView.listenTo(players, "change", playersView.render);
+    playersView.listenTo(players, "save", playersView.render);
+    playersView.listenTo(players, "destroy", playersView.render);
+
+    fightsView.listenTo(fights, "add", fightsView.render);
+    fightsView.listenTo(fights, "change", fightsView.render);
+    fightsView.listenTo(fights, "save", fightsView.render);
+    fightsView.listenTo(fights, "destroy", fightsView.render);
+
+}
 
 
 
 $(function() {
+    //TODO: utiliser router pour changer les points ?
+    //TODO: afficher le total des points
 
-
-    tools.loadTemplates(App.Templates, ['playersView', 'fightsView', 'header', 'main'], function() {
+    tools.loadTemplates(App.Templates, ['playersView', 'fightsView'], function() {
         App.init();
     });
 

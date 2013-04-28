@@ -1,7 +1,11 @@
 <ol>
     <% _.each(fights, function(fight) { %>
     <li id="<%= fight.id %>"> <!-- Name instead of Id : @mklabs tribute -->
-        <h3><%= fight.opponentOneId %> <%= fight.opponentTwoId %></h3>
+        <h4>
+            <%= fight.opponentOne.twitter %> vs <%= fight.opponentTwo.twitter %>
+            : <%= fight.opponentOneScore %> / <%= fight.opponentTwoScore %>
+            <!--<button class='btn btn-primary'>Supprimer</button>-->
+        </h4>
     </li>
     <% }); %>
 </ol>

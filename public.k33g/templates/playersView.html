@@ -1,7 +1,7 @@
 
 <ul class="thumbnails">
     <% _.each(players, function(player) { %>
-    <li class="span4" id="<%= player.twitter %>"> <!-- Name plutôt que Id : see @mklabs -->
+    <li class="span4">
         <div class="thumbnail" style="
                 border:none;
                 -webkit-box-shadow:none;
@@ -10,24 +10,22 @@
             ">
             <img src="pictures/avatars/<%= player.picture %>.jpg" style="width: 180px; height: 180px;" class="img-circle">
             <div class="caption">
-                <h3><%= player.firstName %> <%= player.lastName %></h3>
+                <h4><%= player.firstName %> <%= player.lastName %></h4>
                 <p>
                     <ul class="unstyled">
                         <li>
                             <h4><a href="https://twitter.com/<%= player.twitter %>">
                                 @<%= player.twitter %>
-                            </a></h4>
-                        </li>
-                        <li>
-                            <h4><%= player.framework %></h4>
+                            </a><%= player.framework %></h4>
                         </li>
                     </ul>
                 </p>
                 <p>
                     <label class="checkbox">
-                        <input type="checkbox" value="" name="<%= player.twitter %>">
-                        Sélectionne @<%= player.twitter %> pour 1 combat
+                        <input type="checkbox" data-playerid="<%= player.id %>" value="" name="<%= player.twitter %>">
+                        Sélectionne @<%= player.twitter %>
                     </label>
+                    <!--id="<%= player.id %>"-->
                 </p>
             </div>
         </div>
