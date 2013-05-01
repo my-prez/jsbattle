@@ -32,9 +32,7 @@
 <div ng-repeat="fight in fights">
     <div class="row">
         <div class="span5">
-            <player-score increment-score="incrementScore(fight, 'opponentOneScore')"
-                          decrement-score="decrementScore(fight, 'opponentOneScore')"
-                          fight="fight"
+            <player-score fight="fight"
                           opponent="opponentOne"
                           opponent-score="opponentOneScore"></player-score>
         </div>
@@ -44,9 +42,7 @@
             <h4>VS</h4>
         </div>
         <div class="span5">
-            <player-score increment-score="incrementScore(fight, 'opponentTwoScore')"
-                          decrement-score="decrementScore(fight, 'opponentTwoScore')"
-                          fight="fight"
+            <player-score fight="fight"
                           opponent="opponentTwo"
                           opponent-score="opponentTwoScore"></player-score>
         </div>

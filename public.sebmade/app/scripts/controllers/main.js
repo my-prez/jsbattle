@@ -1,26 +1,17 @@
 'use strict';
 
 angular.module('public.sebmadeApp')
-    .controller('MainCtrl', function ($scope, $http, $log, $location, $routeParams) {
+    .controller('MainCtrl', function ($scope, api, $location, $routeParams) {
         $scope.players = [];
 
-        $http.get("/players")
-            .success(function (data) {
-                $scope.players = data;
-            })
-            .error(function () {
-                $log.error("/players fail")
-            });
+        api.getPlayers().success(function (data) {
+            $scope.players = data;
+        });
 
-        $scope.removePlayer = function (p) {
-            $http.delete("/players/" + p.id)
-                .success(function () {
-                    $log.info("player successfully removed");
-                    $scope.players.splice($scope.players.indexOf(p), 1);
-                })
-                .error(function () {
-                    $log.error("players remove fail");
-                });
+        $scope.removePlayer = function (player) {
+            api.removePlayer(player).success(function () {
+                $scope.players.splice($scope.players.indexOf(player), 1);
+            });
         };
 
         $scope.readyToFight = function () {
@@ -29,16 +20,11 @@ angular.module('public.sebmadeApp')
 
         $scope.fights = [];
 
-        $http.get("/fights")
-            .success(function (data) {
-                $scope.fights = data;
-            })
-            .error(function () {
-                $log.error("/fights fail")
-            });
+        api.getFights().success(function (data) {
+            $scope.fights = data;
+        });
 
         $scope.createFight = function () {
-            $log.info("createFight");
             var selectedPlayers = _.select($scope.players, function (o) {
                 return o.ready;
             });
@@ -47,34 +33,15 @@ angular.module('public.sebmadeApp')
             fight.opponentOneScore = 0;
             fight.opponentTwo = selectedPlayers[1];
             fight.opponentTwoScore = 0;
-            $http.post("/fights", fight)
-                .success(function (data) {
-                    $log.info("add fight : " + data);
-                    $scope.fights.push(data);
-                }).error(function () {
-                    $log.error("fight create fail")
-                });
+            api.addFight(fight).success(function (data) {
+                $scope.fights.push(data);
+            });
         };
 
-        $scope.removeFight = function (f) {
-            $http.delete("/fights/" + f.id)
-                .success(function (data) {
-                    $log.info("fight successfully removed");
-                    $scope.fights.splice($scope.fights.indexOf(f), 1);
-                })
-                .error(function () {
-                    $log.error("fight remove fail");
-                });
-        };
-
-        $scope.incrementScore = function (f, s) {
-            f[s]++;
-            $http.put("/fights/" + f.id, f);
-        };
-
-        $scope.decrementScore = function (f, s) {
-            f[s]--;
-            $http.put("/fights/" + f.id, f);
+        $scope.removeFight = function (fight) {
+            api.removeFight(fight).success(function () {
+                $scope.fights.splice($scope.fights.indexOf(fight), 1);
+            });
         };
 
     });

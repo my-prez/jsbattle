@@ -1,36 +1,24 @@
 'use strict';
 
 angular.module('public.sebmadeApp')
-    .controller('PlayerCtrl', function ($scope, $http, $routeParams, $log, $location) {
+    .controller('PlayerCtrl', function ($scope, api, $routeParams, $location) {
         $scope.player = {};
 
         if ($routeParams.id) {
-            $http.get("/players/" + $routeParams.id)
-                .success(function (data) {
-                    $scope.player = data;
-                })
-                .error(function () {
-                    $log.error("player get fail")
-                });
+            api.getPlayerById($routeParams.id).success(function (data) {
+                $scope.player = data;
+            });
         }
 
         $scope.updatePlayer = function () {
-            $http.put("/players/" + $scope.player.id, $scope.player)
-                .success(function (data) {
-                    $log.info("update player : " + data.id);
-                    $location.path("#/");
-                }).error(function () {
-                    $log.error("player update fail")
-                });
+            api.updatePlayer($scope.player).success(function (data) {
+                $location.path("#/");
+            });
         };
 
         $scope.addPlayer = function () {
-            $http.post("/players", $scope.player)
-                .success(function (data) {
-                    $log.info("add player : " + data);
-                    $location.path("#/");
-                }).error(function () {
-                    $log.error("player add fail")
-                });
+            api.addPlayer($scope.player).success(function (data) {
+                $location.path("#/");
+            });
         };
     });
