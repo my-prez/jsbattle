@@ -28,11 +28,12 @@ angular.module('public.sebmadeApp')
             var selectedPlayers = _.select($scope.players, function (o) {
                 return o.ready;
             });
-            var fight = {};
-            fight.opponentOne = selectedPlayers[0];
-            fight.opponentOneScore = 0;
-            fight.opponentTwo = selectedPlayers[1];
-            fight.opponentTwoScore = 0;
+            var fight = {
+                opponentOne: selectedPlayers[0],
+                opponentOneScore: 0,
+                opponentTwo: selectedPlayers[1],
+                opponentTwoScore: 0
+            };
             api.addFight(fight).success(function (data) {
                 $scope.fights.push(data);
             });

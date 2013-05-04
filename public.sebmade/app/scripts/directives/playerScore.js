@@ -10,11 +10,11 @@ angular.module('public.sebmadeApp')
                 scope.incrementScore = function () {
                     scope.fight[scope.opponentScore]++;
                     api.updateFight(scope.fight);
-                }
+                };
                 scope.decrementScore = function () {
                     scope.fight[scope.opponentScore]--;
                     api.updateFight(scope.fight);
-                }
+                };
             }
         };
     });

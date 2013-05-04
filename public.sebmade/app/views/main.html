@@ -9,12 +9,12 @@
         <div class="well">
             <div class="media">
                 <a class="pull-left" href="#" ng-show="p.twitter">
-                    <img class="media-object img-circle" src="/pictures/avatars/{{p.twitter}}.jpg" width="64" height="64" ng-cloak>
+                    <img class="media-object img-circle" ng-src="/pictures/avatars/{{p.twitter}}.jpg" width="64" height="64">
                 </a>
                 <div class="media-body">
-                    <h4><a href="#/player/{{p.id}}">{{p.firstName}} {{p.lastName}}</a></h4>
+                    <h4><a ng-href="#/player/{{p.id}}">{{p.firstName}} {{p.lastName}}</a></h4>
 
-                    <p><a href="http://twitter.com/{{p.twitter}}" target="_blank">@{{p.twitter}}</a> - {{p.framework}}
+                    <p><a ng-href="http://twitter.com/{{p.twitter}}" target="_blank">@{{p.twitter}}</a> - {{p.framework}}
                     </p>
                     <label class="checkbox" for="checkbox">
                         <input type="checkbox" value="true" id="checkbox" name="checkbox" ng-model="p.ready">
