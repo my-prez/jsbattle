@@ -1,13 +1,13 @@
 <form>
     <label>Prénom : </label>
-    <input type="text" class="input-medium">
+    <input type="text" class="input-medium" ng-model="player.firstName">
     <label>Nom : </label>
-    <input type="text" class="input-medium">
+    <input type="text" class="input-medium" ng-model="player.lastName">
     <label>Twitter : </label>
-    <input type="text" class="input-medium">
+    <input type="text" class="input-medium" ng-model="player.twitter">
     <label>Framework : </label>
-    <input type="text" class="input-medium">
+    <input type="text" class="input-medium" ng-model="player.framework">
 </form>
-<a class="btn">Annuler</a>
-<a class="btn">Modifier</a>
-<a class="btn">Ajouter</a>
+<a class="btn" href="#/">Annuler</a>
+<a class="btn" ng-click="updatePlayer()" ng-show="player.id">Modifier</a>
+<a class="btn" ng-click="addPlayer()" ng-hide="player.id">Ajouter</a>
