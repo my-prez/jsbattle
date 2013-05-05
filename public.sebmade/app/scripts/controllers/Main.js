@@ -10,7 +10,7 @@ angular.module('public.sebmadeApp')
 
         $scope.removePlayer = function (player) {
             api.removePlayer(player).success(function (data) {
-                $scope.players.slice($scope.players.indexOf(player), 1);
+                $scope.players.splice($scope.players.indexOf(player), 1);
             });
         };
 
