@@ -8,45 +8,23 @@
     <div class="span4" ng-repeat="p in players">
         <div class="well">
             <div class="media">
-                <a class="pull-left" href="#" ng-show="p.twitter">
-                    <img class="media-object img-circle" ng-src="/pictures/avatars/{{p.twitter}}.jpg" width="64" height="64">
+                <a class="pull-left" href="#">
+                    <img class="media-object img-circle" ng-src="pictures/avatars/{{p.twitter}}.jpg" width="64" height="64">
                 </a>
                 <div class="media-body">
                     <h4><a ng-href="#/player/{{p.id}}">{{p.firstName}} {{p.lastName}}</a></h4>
 
-                    <p><a ng-href="http://twitter.com/{{p.twitter}}" target="_blank">@{{p.twitter}}</a> - {{p.framework}}
-                    </p>
+                    <p><a target="_blank" ng-href="http://twitter.com/{{p.twitter}}">{{p.twitter}}</a> - {{p.framework}}</p>
+
                     <label class="checkbox" for="checkbox">
-                        <input type="checkbox" value="true" id="checkbox" name="checkbox" ng-model="p.ready">
+                        <input type="checkbox" value="true" id="checkbox" name="checkbox" ng-model="p.isReady">
                         <span>prêt au combat</span>
                     </label>
+
                     <button ng-click="removePlayer(p)">déclare forfait</button>
                 </div>
             </div>
         </div>
     </div>
 </div>
-<a class="btn" href="#/player/">Ajouter un joueur</a>
-<a class="btn" ng-click="createFight()" ng-show="readyToFight()">Envoyer sur le ring</a>
-<br><br>
-<div ng-repeat="fight in fights">
-    <div class="row">
-        <div class="span5">
-            <player-score fight="fight"
-                          opponent="opponentOne"
-                          opponent-score="opponentOneScore"></player-score>
-        </div>
-        <div class="span2 centered">
-            <br>
-            <br>
-            <h4>VS</h4>
-        </div>
-        <div class="span5">
-            <player-score fight="fight"
-                          opponent="opponentTwo"
-                          opponent-score="opponentTwoScore"></player-score>
-        </div>
-    </div>
-    <a class="btn" ng-click="removeFight(fight)">Annuler le combat</a>
-    <br><br>
-</div>
+<a class="btn" ng-href="#/player/">Ajouter un joueur</a>

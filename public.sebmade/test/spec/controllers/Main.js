@@ -9,17 +9,17 @@ describe('Controller: MainCtrl', function () {
         scope;
 
     // Initialize the controller and a mock scope
-    beforeEach(inject(function ($controller, $httpBackend) {
-        $httpBackend.when("GET", "/players").respond([{firstName: "test", lastName: "TEST"}]);
-        $httpBackend.when("GET", "/fights").respond([{name: "test"}]);
-        scope = {};
+    beforeEach(inject(function ($controller, $rootScope, $httpBackend) {
+        $httpBackend.when("GET", "/players").respond([{firstName:'test', lastName: 'TEST'}]);
+        scope = $rootScope.$new();
         MainCtrl = $controller('MainCtrl', {
             $scope: scope
         });
         $httpBackend.flush();
     }));
 
-    it('should init list players', function () {
+    it('should have players', function() {
         expect(scope.players.length).toBe(1);
     });
+
 });
