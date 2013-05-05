@@ -1,7 +1,7 @@
 'use strict';
 
 angular.module('public.sebmadeApp')
-    .controller('MainCtrl', function ($scope, api, $location, $routeParams) {
+    .controller('MainCtrl', function ($scope, api) {
         $scope.players = [];
 
         api.getPlayers().success(function (data) {
