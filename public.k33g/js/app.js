@@ -35,7 +35,7 @@ App.Collections.Fights = Backbone.Collection.extend({
 App.Views.Players = Backbone.View.extend({
     el : "#players",
     initialize : function() {
-        this.template = _.template(App.Templates["playersView"]); //fair un dessin/workflow de ce qu'il se passe
+        this.template = _.template(App.Templates["playersView"]);
     },
     render : function() {
 
@@ -129,11 +129,26 @@ App.Views.Fights = Backbone.View.extend({
     computeScores : function() {
         var scores = {BACKBONE:0, ANGULAR:0, EMBER:0};
 
+        this.collection.each(function(fight) {
+            _.map(scores = {BACKBONE:0, ANGULAR:0, EMBER:0}, function(score,frameworkName) {
+
+                if (fight.get("opponentOne").framework.toUpperCase() == frameworkName)
+                    scores[frameworkName] += fight.get("opponentOneScore");
+
+                if (fight.get("opponentTwo").framework.toUpperCase() == frameworkName)
+                    scores[frameworkName] += fight.get("opponentTwoScore");
+
+            })
+        })
+
+
+
         function computeFor(frameworkName, fight) {
             frameworkName = frameworkName.toUpperCase();
 
             if (fight.get("opponentOne").framework.toUpperCase() == frameworkName)
                 scores[frameworkName] += fight.get("opponentOneScore");
+
             if (fight.get("opponentTwo").framework.toUpperCase() == frameworkName)
                 scores[frameworkName] += fight.get("opponentTwoScore");
         }
