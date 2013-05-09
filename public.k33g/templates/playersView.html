@@ -1,40 +1,10 @@
 
+<!-- LISTE DES JOUEURS -->
 <ul class="thumbnails">
-    <% _.each(players, function(player) { %>
-    <li class="span4">
-        <div class="thumbnail" style="
-                border:none;
-                -webkit-box-shadow:none;
-                -moz-box-shadow: none;
-                box-shadow: none;
-            ">
-            <img src="pictures/avatars/<%= player.twitter %>.jpg" style="width: 180px; height: 180px;" class="img-circle">
-            <div class="caption">
-                <h4><%= player.firstName %> <%= player.lastName %></h4>
-                <p>
-                    <ul class="unstyled">
-                        <li>
-                            <h4><a href="https://twitter.com/<%= player.twitter %>">
-                                @<%= player.twitter %>
-                            </a><%= player.framework %></h4>
-                        </li>
-                    </ul>
-                </p>
-                <p>
-                    <label class="checkbox">
-                        <input type="checkbox" data-playerid="<%= player.id %>" value="" name="<%= player.twitter %>">
-                        Sélectionne @<%= player.twitter %>
-                    </label>
-                    <!--id="<%= player.id %>"-->
-                </p>
-            </div>
-        </div>
-    </li>
-    <% }); %>
+
 </ul>
 
-<div name="alert" class="alert alert-info">
+<!-- MESSAGES-->
+<div name="alert" class="alert alert-info" style="margin-bottom:0;">
     <h4>Sélectionne 2 combattants pour 1 combat</h4>
 </div>
-
-
