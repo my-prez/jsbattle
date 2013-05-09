@@ -1,10 +1,10 @@
 'use strict';
 
 angular.module('public.sebmadeApp')
-  .controller('MainCtrl', function ($scope, api) {
+    .controller('MainCtrl', function ($scope, api) {
         $scope.players = [];
 
-        api.getPlayers().success(function(data) {
+        api.getPlayers().success(function (data) {
             $scope.players = data;
         });
 
@@ -13,5 +13,12 @@ angular.module('public.sebmadeApp')
                 $scope.players.splice($scope.players.indexOf(player), 1);
             });
         };
+
+        $scope.fights = [];
+
+        api.getFights().success(function (data) {
+            $scope.fights = data;
+        });
+
 
     });

@@ -18,7 +18,7 @@
                     <p><a target="_blank" ng-href="http://twitter.com/{{p.twitter}}">{{p.twitter}}</a> - {{p.framework}}
                     </p>
                     <label class="checkbox" for="checkbox">
-                        <input type="checkbox" value="true" id="checkbox" name="checkbox" ng-model="p.isReady">
+                        <input type="checkbox" value="true" id="checkbox" name="checkbox" ng-model="p.ready">
                         <span>prêt au combat</span>
                     </label>
                     <button ng-click="removePlayer(p)">déclare forfait</button>
@@ -28,3 +28,26 @@
     </div>
 </div>
 <a class="btn" href="#/player/">Ajouter un joueur</a>
+
+<a class="btn" ng-click="createFight()" ng-show="readyToFight()">Envoyer sur le ring</a>
+<br><br>
+<div ng-repeat="fight in fights">
+    <div class="row">
+        <div class="span5">
+
+
+        </div>
+        <div class="span2 centered">
+            <br>
+            <br>
+            <h4>VS</h4>
+        </div>
+        <div class="span5">
+
+
+        </div>
+    </div>
+    <a class="btn" ng-click="removeFight(f)">Annuler le combat</a>
+    <br><br>
+</div>
+
