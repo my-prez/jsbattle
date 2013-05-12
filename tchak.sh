@@ -1,3 +1,3 @@
 #!/bin/sh
 #
-java -jar alpesjugjsbattle-0.0.0-standalone.jar localhost 3300 3301 localhost 4000 public.tchak index.html
+java -jar target/alpesjugjsbattle-0.0.0-standalone.jar localhost 3300 3301 localhost 4000 public.tchak index.html
