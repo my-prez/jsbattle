@@ -6,20 +6,15 @@ Ember.Application.reopen({
     this.loadTemplates();
   },
 
-  templates: null,
+  templates: [],
 
   loadTemplates: function() {
     var app = this,
-        templates = this.get('templates'),
-        promises;
+        templates = this.get('templates');
 
-    if (templates && templates.length > 0) {
-      app.deferReadiness();
-    } else {
-      return;
-    }
+    app.deferReadiness();
 
-    promises = templates.map(function(name) {
+    var promises = templates.map(function(name) {
       return Ember.$.get('app/templates/'+name+'.hbs').then(function(data) {
         Ember.TEMPLATES[name] = Ember.Handlebars.compile(data);
       });

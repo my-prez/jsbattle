@@ -68,18 +68,13 @@ App.OpponentController = Ember.ObjectController.extend({
 });
 
 App.PlayerEditRoute = Ember.Route.extend({
-  deactivate: function() {
-    var player = this.get('controller.model');
-
-    if (!player.get('isSaving')) {
-      player.get('transaction').rollback();
-    }
-  },
   events: {
+    cancel: function() {
+      this.get('controller.transaction').rollback();
+      this.transitionTo('index');
+    },
     save: function() {
-      var player = this.get('controller.model');
-
-      player.save();
+      this.get('controller.model').save();
       this.transitionTo('index');
     }
   }
