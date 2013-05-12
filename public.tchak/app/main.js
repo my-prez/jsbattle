@@ -49,10 +49,10 @@ App.IndexController = Ember.Controller.extend({
   }.property(),
 
   selectedPlayers: function() {
-    return this.get('players').filterProperty('isReady');
-  }.property('players.@each.isReady'),
+    return this.get('players').filterProperty('ready');
+  }.property('players.@each.ready'),
 
-  readyToFight: Em.computed.gte('selectedPlayers.length', 2)
+  readyToFight: Em.computed.equal('selectedPlayers.length', 2)
 });
 
 App.OpponentController = Ember.ObjectController.extend({
@@ -69,15 +69,17 @@ App.OpponentController = Ember.ObjectController.extend({
 
 App.PlayerEditRoute = Ember.Route.extend({
   deactivate: function() {
-    Ember.run.next(this.get('controller'), function() {
-      if (!this.get('isSaving')) {
-        this.get('transaction').rollback();
-      }
-    });
+    var player = this.get('controller.model');
+
+    if (!player.get('isSaving')) {
+      player.get('transaction').rollback();
+    }
   },
   events: {
     save: function() {
-      this.get('controller.model').save();
+      var player = this.get('controller.model');
+
+      player.save();
       this.transitionTo('index');
     }
   }

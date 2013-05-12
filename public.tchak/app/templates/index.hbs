@@ -8,11 +8,16 @@
   {{#each players}}
     <div class="span4">
       <div class="well">
-        <h4>{{#linkTo player.edit this}}{{firstName}} {{lastName}}{{/linkTo}}</h4>
+        <h4>
+          {{#linkTo player.edit this}}
+            {{firstName}} {{lastName}}
+          {{/linkTo}}
+        </h4>
 
         <p>{{twitter}} - {{framework}}</p>
+
         <label class="checkbox">
-          {{input type="checkbox" checkedBinding="isReady"}}
+          {{input type="checkbox" checked=ready}}
           <span>prêt au combat</span>
         </label>
 
