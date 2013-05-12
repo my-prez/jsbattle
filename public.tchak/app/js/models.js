@@ -6,8 +6,12 @@ App.Player = DS.Model.extend({
 
   ready:      DS.attr('boolean', {defaultValue: false}),
 
-  avatarUrl:  function() {
+  avatarUrl: function() {
     return "app/images/avatars/"+this.get('twitter')+".jpg";
+  }.property('twitter'),
+
+  twitterUrl: function() {
+    return "http://twitter.com/"+this.get('twitter');
   }.property('twitter'),
 
   readyDidChange: function() {

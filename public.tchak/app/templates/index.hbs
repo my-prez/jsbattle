@@ -8,22 +8,30 @@
   {{#each players}}
     <div class="span4">
       <div class="well">
-        <h4>
-          {{#linkTo player.edit this}}
-            {{firstName}} {{lastName}}
-          {{/linkTo}}
-        </h4>
+        <div class="media">
+          <span class="pull-left">
+            <img class="media-object img-circle" {{bindAttr src=avatarUrl}} width="64" height="64">
+          </span>
 
-        <img {{bindAttr src=avatarUrl}}>
+          <div class="media-body">
+            <h4>
+              {{#linkTo player.edit this}}
+                {{firstName}} {{lastName}}
+              {{/linkTo}}
+            </h4>
 
-        <p>{{twitter}} - {{framework}}</p>
+            <p>
+              <a {{bindAttr href=twitterUrl}} target="_blank">@{{twitter}}</a> - {{framework}}
+            </p>
 
-        <label class="checkbox">
-          {{input type="checkbox" checked=ready}}
-          <span>prêt au combat</span>
-        </label>
+            <label class="checkbox">
+              {{input type="checkbox" checked=ready}}
+              <span>prêt au combat</span>
+            </label>
 
-        <button {{action removePlayer this}}>déclare forfait</button>
+            <button {{action removePlayer this}}>déclare forfait</button>
+          </div>
+        </div>
       </div>
     </div>
   {{/each}}
