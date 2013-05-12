@@ -9,10 +9,6 @@ App.Adapter = DS.RESTAdapter.extend({
     json = this.extractData(type, json, true);
     this._super(store, type, json);
   },
-  didFindQuery: function(store, type, json, array) {
-    json = this.extractData(type, json, true);
-    this._super(store, type, json, array);
-  },
 
   didCreateRecord: function(store, type, record, json) {
     json = this.extractData(type, json);
