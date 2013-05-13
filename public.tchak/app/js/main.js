@@ -15,7 +15,6 @@ App.Router.map(function() {
   this.resource('player', function() {
     this.route('edit', {path: ':player_id'});
   });
-  this.route('fight');
 });
 
 App.IndexRoute = Ember.Route.extend({

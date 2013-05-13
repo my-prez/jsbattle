@@ -37,3 +37,13 @@ App.Adapter = DS.RESTAdapter.extend({
     return data;
   }
 });
+
+App.Adapter.registerTransform('hash', {
+  deserialize: function(serialized) {
+    return serialized;
+  },
+
+  serialize: function(object) {
+    return object;
+  }
+});
