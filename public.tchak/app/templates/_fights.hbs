@@ -1,0 +1,24 @@
+{{#if readyToFight}}
+  <a class="btn" {{action createFight}}>Envoyer sur le ring</a>
+{{/if}}
+
+<br><br>
+<div>
+  {{#each fights}}
+    <div class="row">
+        <div class="span5">
+          {{render opponent firstOpponent}}
+        </div>
+        <div class="span2 centered">
+            <br>
+            <br>
+            <h4>VS</h4>
+        </div>
+        <div class="span5">
+          {{render opponent secondOpponent}}
+        </div>
+    </div>
+    <a class="btn" {{action removeFight this}}>Annuler le combat</a>
+    <br><br>
+  {{/each}}
+</div>

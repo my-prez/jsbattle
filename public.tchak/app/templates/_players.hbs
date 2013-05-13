@@ -1,0 +1,35 @@
+<p class="lead">Les Joueurs</p>
+<div class="row">
+  {{#each players}}
+    <div class="span4">
+      <div class="well">
+        <div class="media">
+          <span class="pull-left">
+            <img class="media-object img-circle" {{bindAttr src=avatarUrl}} width="64" height="64">
+          </span>
+
+          <div class="media-body">
+            <h4>
+              {{#linkTo player.edit this}}
+                {{firstName}} {{lastName}}
+              {{/linkTo}}
+            </h4>
+
+            <p>
+              <a {{bindAttr href=twitterUrl}} target="_blank">@{{twitter}}</a> - {{framework}}
+            </p>
+
+            <label class="checkbox">
+              {{input type="checkbox" checked=ready}}
+              <span>prêt au combat</span>
+            </label>
+
+            <button {{action removePlayer this}}>déclare forfait</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  {{/each}}
+</div>
+
+{{#linkTo player class="btn"}}Ajouter un joueur{{/linkTo}}

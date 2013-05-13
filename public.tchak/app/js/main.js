@@ -7,7 +7,9 @@ window.App = Ember.Application.create({
     'player/index',
     'player/edit',
     'player/_form',
-    'opponent'
+    'opponent',
+    '_players',
+    '_fights'
   ]
 });
 
