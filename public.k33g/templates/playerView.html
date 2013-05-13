@@ -1,0 +1,30 @@
+
+<li class="span3" style="margin-bottom:0;">
+        
+    <div class="thumbnail" style="border:none; -webkit-box-shadow:none; -moz-box-shadow: none; box-shadow: none;">
+        <!-- AFFICHER AVATAR -->
+        <img src="pictures/avatars/<%= player.twitter %>.jpg" style="width: 120px; height: 120px;" class="img-circle">
+        
+        <div class="caption">
+            <!-- INFOS DU JOUEUR -->
+            <h4><%= player.firstName %> <%= player.lastName %></h4>
+            <p>
+                <ul class="unstyled">
+                    <li>
+                        <h4><a href="https://twitter.com/<%= player.twitter %>">
+                            @<%= player.twitter %>
+                        </a><%= player.framework %></h4>
+                    </li>
+                </ul>
+            </p>
+            <p>
+                <label class="checkbox">
+                    <!-- CASE A COCHER-->
+                    <input type="checkbox" <% if(player.ready){%> checked <%} %>>
+                    Sélectionne @<%= player.twitter %>
+                </label>
+            </p>
+        </div>
+    </div>
+
+</li>
