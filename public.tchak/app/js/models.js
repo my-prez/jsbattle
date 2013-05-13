@@ -4,7 +4,7 @@ App.Player = DS.Model.extend({
   twitter:    DS.attr('string'),
   framework:  DS.attr('string'),
 
-  ready:      DS.attr('boolean', {defaultValue: false}),
+  ready:      false,
 
   avatarUrl: function() {
     return "app/images/avatars/"+this.get('twitter')+".jpg";
@@ -13,10 +13,6 @@ App.Player = DS.Model.extend({
   twitterUrl: function() {
     return "http://twitter.com/"+this.get('twitter');
   }.property('twitter'),
-
-  readyDidChange: function() {
-    if (this.get('isDirty')) { this.save(); }
-  }.observes('ready'),
 
   toHash: function() {
     return this.getProperties(
