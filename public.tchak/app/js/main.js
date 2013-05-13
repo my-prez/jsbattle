@@ -3,13 +3,11 @@ window.App = Ember.Application.create({
   templates: [
     'application',
     'index',
+    '_players',
     'player',
     'player/index',
     'player/edit',
-    'player/_form',
-    'opponent',
-    '_players',
-    '_fights'
+    'player/_form'
   ]
 });
 
@@ -24,18 +22,6 @@ App.IndexRoute = Ember.Route.extend({
     removePlayer: function(player) {
       player.deleteRecord();
       player.save();
-    },
-    removeFight: function(fight) {
-      fight.deleteRecord();
-      fight.save();
-    },
-    createFight: function() {
-      var players = this.controllerFor('index').get('selectedPlayers');
-
-      App.Fight.createRecord({
-        opponentOne: players.objectAt(0).toHash(),
-        opponentTwo: players.objectAt(1).toHash()
-      }).save();
     }
   }
 });
@@ -43,30 +29,7 @@ App.IndexRoute = Ember.Route.extend({
 App.IndexController = Ember.Controller.extend({
   players: function() {
     return App.Player.find();
-  }.property(),
-
-  fights: function() {
-    return App.Fight.find();
-  }.property(),
-
-  selectedPlayers: function() {
-    return this.get('players').filterProperty('ready');
-  }.property('players.@each.ready'),
-
-  readyToFight: Em.computed.equal('selectedPlayers.length', 2),
-  tooManyPlayers: Em.computed.gt('selectedPlayers.length', 2)
-});
-
-App.OpponentController = Ember.ObjectController.extend({
-  isZero: Em.computed.equal('score', 0),
-  incrementScore: function() {
-    this.incrementProperty('score');
-    this.get('fight').save();
-  },
-  decrementScore: function() {
-    this.decrementProperty('score');
-    this.get('fight').save();
-  }
+  }.property()
 });
 
 App.PlayerEditRoute = Ember.Route.extend({
