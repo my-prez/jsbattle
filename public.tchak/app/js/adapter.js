@@ -47,3 +47,15 @@ App.Adapter.registerTransform('hash', {
     return object;
   }
 });
+
+App.loadTemplates([
+  'application',
+  'index',
+  'player',
+  'player/index',
+  'player/edit',
+  'player/_form',
+  'opponent',
+  '_players',
+  '_fights'
+]);

@@ -1,17 +1,5 @@
 
-window.App = Ember.Application.create({
-  templates: [
-    'application',
-    'index',
-    'player',
-    'player/index',
-    'player/edit',
-    'player/_form',
-    'opponent',
-    '_players',
-    '_fights'
-  ]
-});
+window.App = Ember.Application.create();
 
 App.Router.map(function() {
   this.resource('player', function() {

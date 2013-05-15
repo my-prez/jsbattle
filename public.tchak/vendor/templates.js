@@ -1,16 +1,7 @@
 
 Ember.Application.reopen({
-  init: function() {
-    this._super();
-
-    this.loadTemplates();
-  },
-
-  templates: [],
-
-  loadTemplates: function() {
-    var app = this,
-        templates = this.get('templates');
+  loadTemplates: function(templates) {
+    var app = this;
 
     app.deferReadiness();
 
