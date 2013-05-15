@@ -12,7 +12,7 @@ App.Player = DS.Model.extend({
 
   twitterUrl: function() {
     return "http://twitter.com/"+this.get('twitter');
-  }.property('twitter'),
+  }.property('twitter')/*,
 
   toHash: function() {
     return this.getProperties(
@@ -22,9 +22,9 @@ App.Player = DS.Model.extend({
       'twitter',
       'framework'
     );
-  }
+  }*/
 });
-
+/*
 App.Fight = DS.Model.extend({
   opponentOne:        DS.attr('hash'),
   opponentTwo:        DS.attr('hash'),
@@ -48,3 +48,4 @@ App.Fight = DS.Model.extend({
     return this.opponent('Two');
   }.property()
 });
+*/

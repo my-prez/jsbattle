@@ -1,18 +1,18 @@
 
 window.App = Ember.Application.create();
 
-App.Router.map(function() {
+/*App.Router.map(function() {
   this.resource('player', function() {
     this.route('edit', {path: ':player_id'});
   });
-});
+});*/
 
 App.IndexRoute = Ember.Route.extend({
   events: {
     removePlayer: function(player) {
       player.deleteRecord();
       player.save();
-    },
+    } /*,
     removeFight: function(fight) {
       fight.deleteRecord();
       fight.save();
@@ -24,14 +24,14 @@ App.IndexRoute = Ember.Route.extend({
         opponentOne: players.objectAt(0).toHash(),
         opponentTwo: players.objectAt(1).toHash()
       }).save();
-    }
+    }*/
   }
 });
 
 App.IndexController = Ember.Controller.extend({
   players: function() {
     return App.Player.find();
-  }.property(),
+  }.property()/*,
 
   fights: function() {
     return App.Fight.find();
@@ -42,9 +42,9 @@ App.IndexController = Ember.Controller.extend({
   }.property('players.@each.ready'),
 
   readyToFight: Em.computed.equal('selectedPlayers.length', 2),
-  tooManyPlayers: Em.computed.gt('selectedPlayers.length', 2)
+  tooManyPlayers: Em.computed.gt('selectedPlayers.length', 2)*/
 });
-
+/*
 App.OpponentController = Ember.ObjectController.extend({
   isZero: Em.computed.equal('score', 0),
   incrementScore: function() {
@@ -56,7 +56,7 @@ App.OpponentController = Ember.ObjectController.extend({
     this.get('fight').save();
   }
 });
-
+*/
 App.PlayerEditRoute = Ember.Route.extend({
   events: {
     cancel: function() {
