@@ -54,7 +54,7 @@ App.IndexController = Ember.Controller.extend({
   }.property('players.@each.ready'),
 
   readyToFight: Em.computed.equal('selectedPlayers.length', 2),
-  toManyPlayers: Em.computed.gt('selectedPlayers.length', 2)
+  tooManyPlayers: Em.computed.gt('selectedPlayers.length', 2)
 });
 
 App.OpponentController = Ember.ObjectController.extend({
