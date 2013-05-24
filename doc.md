@@ -32,7 +32,7 @@ Créer un fichier de configuration `maconf.conf` :
 
 ###Un p'tit shell pour la route
 
-Créer un script `monapp.sh` *(à rendre exécutable : `chmode +x`)*:
+Créer un script `monapp.sh` *(à rendre exécutable : `chmod +x`)*:
 
     #!/bin/sh
     #
